@@ -350,3 +350,51 @@ get '/api/customers/:id' do
 
   return customer.to_json
 end
+
+post '/api/customers/:id/session' do
+  secret = Stripe::CustomerSession.create({
+    customer: params[:id],
+    components: {pricing_table: {enabled: true}},
+  })
+
+  return secret.to_json
+end
+
+post '/api/customers/:id/portal_session' do
+  session = Stripe::BillingPortal::Session.create({
+    customer: params[:id],
+    return_url: "https://example-terminal-backend-1.onrender.com/customers/#{params[:id]}/portal",
+  })
+  return session.to_json
+end
+
+get '/api/customers/:id/payment_intents' do
+  pis = Stripe::PaymentIntent.list({limit: 10})
+
+  return pis.to_json
+end
+
+get '/api/terminal/:id' do
+  return Stripe::Terminal::Reader.retrieve(params[:id]).to_json
+end
+
+post '/api/terminal/:id/cannel' do
+  return Stripe::Terminal::Reader.cancel_action(params[:id]).to_json
+end
+
+post '/api/terminal/:id/payment_intent' do
+  req = JSON.parse(request.body.read)
+  customer = req['customer']
+  amount = req['amount']
+
+  intent = Stripe::PaymentIntent.create({
+    currency: 'usd',
+    customer: customer,
+    payment_method_types: ['card_present'],
+    amount: amount,
+    setup_future_usage: "off_session"
+  })
+
+  process = Stripe::Terminal::Reader.process_payment_intent(params[:id], {payment_intent: intent.id})
+  return process.to_json
+end
