@@ -6,7 +6,7 @@ export default function Customers() {
   const [customers, setCustomers] = useState([]);
 
   useEffect(() => {
-    fetch(`/api/customers`).then(async(r) => {
+    fetch("https://example-terminal-backend-l8i6.onrender.com/api/customers").then(async(r) => {
       const { data } = await r.json();
       setCustomers(data);
     });
@@ -14,7 +14,7 @@ export default function Customers() {
 
   return (
     <div>
-      <h2>Customer2</h2>
+      <h2>Customers</h2>
       <ul>
         { customers.map((customer) => 
         <li><Link to={`/customers/${customer.id}`}>{customer.id}: {customer.name}</Link></li>
