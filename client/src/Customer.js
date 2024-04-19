@@ -53,14 +53,16 @@ export default function Customer(prop) {
         <li>card:
           <ul>
             {customer && customer.cards && customer.cards.map((card, index) => (
-              <li>{card.card.display_brand}:**** **** {card.card.last4}</li>
+              <li>
+              {card.card.display_brand}:**** **** {card.card.last4} {card.card.generated_from?.payment_method_details?.type || 'online' } 
+              </li>
             ))}
           </ul>
         </li>
         <li>支払い:
           <ul>
             {paymentIntents && paymentIntents.data && paymentIntents.data.map((pi, index) => (
-              <li><TimeFormatter timestamp={pi.created}></TimeFormatter> : {pi.amount/100} {pi.currency} </li>
+              <li><TimeFormatter timestamp={pi.created}></TimeFormatter> : {pi.amount/100} {pi.currency} { (pi.payment_method_types[0] === 'card') ? "online" : "card_present" }</li>
             ))}
           </ul>
         </li>

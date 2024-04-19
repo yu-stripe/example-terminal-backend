@@ -351,6 +351,21 @@ get '/api/customers/:id' do
   return customer.to_json
 end
 
+post '/api/customers/:id/payment_intent/:pm' do
+  payment_intent = Stripe::PaymentIntent.create(
+    amount: 1000,
+    currency: 'usd',
+    customer: params[:id],
+    payment_method: params[:pm],
+    #confirm: params[:confirm] || false
+  )
+
+  {
+    clientSecret: payment_intent.client_secret,
+    status: payment_intent.status
+  }.to_json
+end
+
 post '/api/customers/:id/session' do
   secret = Stripe::CustomerSession.create({
     customer: params[:id],
