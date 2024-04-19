@@ -396,10 +396,13 @@ get '/api/payment_intents/:id' do
   return pi.to_json
 end
 
-post '/api/payment_intents/:id/confirm/:pm_id' do
-  pi = Stripe::PaymentIntent.confirm(params[:id],
+post '/api/customers/:id/payment_intents/:pi_id/confirm' do
+  customer = Stripe::Customer.retrieve(params[:id])
+  return "error" if customer.nil? or customer.invoice_settings.default_payment_method.nil?
+
+  pi = Stripe::PaymentIntent.confirm(params[:pi_id],
                                      {
-                                       payment_method: params[:pm_id],
+                                       payment_method: customer.invoice_settings.default_payment_method,
                                        return_url: 'https://www.example.com',
                                      })
 
