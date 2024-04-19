@@ -6,6 +6,7 @@ import BuyButton from './BuyButton.js'
 import { API_URL } from './index.js'
 import { STRIPE_KEY } from './index.js'
 import Confirm from './Confirm.js'
+import Table from 'react-bootstrap/Table';
 
 import { loadStripe } from "@stripe/stripe-js";
 import { 
@@ -13,6 +14,10 @@ import {
   useStripe,
   useElements,
 } from "@stripe/react-stripe-js";
+
+import Container from 'react-bootstrap/Container';
+import Row from 'react-bootstrap/Row';
+import Col from 'react-bootstrap/Col';
 
 export default function CustomerPortal(prop) {
   let { id } = useParams();
@@ -51,21 +56,44 @@ export default function CustomerPortal(prop) {
   }, []);
 
   return (
-    <>
+    <Container>
       {customer && (
-      <div>
-      <h2>{customer.name || "Customer"}</h2>
-        <QRCode value={id} />
-        <h3><a href={portal.url}>ポータル</a></h3>
-        <div>購入 10 usdを保存したカード</div>
-        {clientSecret &&
-        <Elements stripe={stripePromise}>
-          <Confirm clientSecret={clientSecret} card={card}/>
-        </Elements>
-        }
-      </div>
+        <>
+          <Row>
+            <h2>Customer: {customer.name || "Customer"}</h2>
+            <QRCode value={id} />
+          </Row>
+          <Row>
+            <h2>オンラインで購入</h2>
+            <div>購入 10 usdを保存したカード</div>
+            {clientSecret &&
+            <Elements stripe={stripePromise}>
+              <Confirm clientSecret={clientSecret} card={card}/>
+            </Elements>
+            }
+            <h3>Card</h3>
+            <Table>
+              <thead>
+                <tr> 
+                  <th>brand</th>
+                  <th>last4</th>
+                  <th>type</th>
+                </tr>
+              </thead>
+              <tbody>
+                {customer && customer.cards && customer.cards.map((card, index) => (
+                  <tr>
+                    <td>{card.card.display_brand}</td>
+                    <td>**** **** {card.card.last4}</td>
+                    <td>{card.card.generated_from?.payment_method_details?.type || 'online' } </td>
+                  </tr>
+                ))}
+              </tbody>
+            </Table>
+          </Row>
+        </>
       )}
-    </>
+    </Container>
   )
 }
 

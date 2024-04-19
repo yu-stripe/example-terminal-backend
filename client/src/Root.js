@@ -1,17 +1,20 @@
 import logo from './logo.svg';
+import { useNavigate } from "react-router-dom";
 import './App.css';
 
 export default function App() {
+  const navigate = useNavigate();
+
+  const onClick = () => {
+    navigate("/customers")
+  }
 
   return (
       <div className="App">
         <header className="App-header">
-          <p>
+          <p onClick={onClick}>
             Stripe Termianl Demo App
           </p>
-          <div>
-            <p><a href="/customers">顧客リスト</a></p>
-          </div>
         </header>
       </div>
   )

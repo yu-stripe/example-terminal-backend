@@ -3,11 +3,24 @@ import { useParams } from "react-router-dom";
 import { Link } from 'react-router-dom';
 import TimeFormatter from "./TimeFormatter"
 import { API_URL } from './index.js'
+
+import Container from 'react-bootstrap/Container';
+import Row from 'react-bootstrap/Row';
+import Col from 'react-bootstrap/Col';
+import ListGroup from 'react-bootstrap/ListGroup';
+import { useNavigate } from "react-router-dom";
+import Table from 'react-bootstrap/Table';
+
+import Button from 'react-bootstrap/Button';
+import Form from 'react-bootstrap/Form';
+
 export default function Customer(prop) {
   let { id } = useParams();
   const [customer, setCustomer] = useState({});
   const [paymentIntents, setPaymentIntents] = useState({});
   const terminal = 'tmr_Fcd9lADqPm3A5q'
+
+  const [amount, setAmount] = useState(0);
 
   useEffect(() => {
     fetch(`${API_URL}/api/customers/${id}`).then(async(r) => {
@@ -27,10 +40,11 @@ export default function Customer(prop) {
     });
   }
 
-  let collect = (amount, terminal) => {
+  let collect = (e) => {
+    e.preventDefault();
     fetch(`${API_URL}/api/terminal/${terminal}/payment_intent`, {
       method: "POST",
-      body: JSON.stringify({amount: amount, customer: id})
+      body: JSON.stringify({amount: amount * 100, customer: id})
     }).then(async(r) => {
     });
   }
@@ -43,39 +57,98 @@ export default function Customer(prop) {
   }
 
   return (
-    <>
-      <h2>Customer</h2>
-      <ul>
-        <li>{id}</li>
-        <li>name: {customer.name}</li>
-        <li>email: {customer.email}</li>
-        <li>desc: {customer.description}</li>
-        <li>card:
-          <ul>
+    <Container>
+      <Row>
+        <h2>Merchant: {customer.name}</h2>
+        <Table>
+          <thead>
+          </thead>
+          <tbody>
+            <tr>
+              <th>id</th>
+              <td><a href={`https://dashboard.stripe.com/test/customers/${id}`}>{id}</a></td>
+            </tr>
+            <tr>
+              <th>Name</th>
+              <td>{customer.name}</td>
+            </tr>
+            <tr>
+              <th>Email</th>
+              <td>{customer.email}</td>
+            </tr>
+            <tr>
+              <th>Description</th>
+              <td>{customer.description}</td>
+            </tr>
+            <tr>
+              <th>カスタマー画面 </th>
+              <td> {customer && <Link to={`/customers/${customer.id}/portal`}>LINK</Link> } </td>
+            </tr>
+            </tbody>
+        </Table>
+      </Row>
+      <Row>
+        <h3>Card</h3>
+        <Table>
+          <thead>
+            <tr> 
+              <th>brand</th>
+              <th>last4</th>
+              <th>type</th>
+            </tr>
+            </thead>
+          <tbody>
             {customer && customer.cards && customer.cards.map((card, index) => (
-              <li>
-              {card.card.display_brand}:**** **** {card.card.last4} {card.card.generated_from?.payment_method_details?.type || 'online' } 
-              </li>
+              <tr>
+                <td>{card.card.display_brand}</td>
+                <td>**** **** {card.card.last4}</td>
+                <td>{card.card.generated_from?.payment_method_details?.type || 'online' } </td>
+              </tr>
             ))}
-          </ul>
-        </li>
-        <li>支払い:
-          <ul>
+        </tbody>
+      </Table>
+      </Row>
+      <Row>
+        <h3>直近の支払い</h3>
+        <Table>
+          <thead>
+            <tr>
+              <td>date</td>
+              <td>amount</td>
+              <td>type</td>
+            </tr>
+          </thead>
+          <tbody>
             {paymentIntents && paymentIntents.data && paymentIntents.data.map((pi, index) => (
-              <li><TimeFormatter timestamp={pi.created}></TimeFormatter> : {pi.amount/100} {pi.currency} { (pi.payment_method_types[0] === 'card') ? "online" : "card_present" }</li>
+              <tr>
+                <td><TimeFormatter timestamp={pi.created}></TimeFormatter></td>
+                <td>{pi.amount/100} {pi.currency}</td>
+                <td>{ (pi.payment_method_types[0] === 'card') ? "online" : "card_present" }</td>
+              </tr>
             ))}
-          </ul>
-        </li>
-      </ul>
+          </tbody>
+        </Table>
+      </Row>
+      <Row>
+        <h3>POS</h3>
       <div>
-        <button onClick={() => collect(10000, 'tmr_Fcd9lADqPm3A5q')}>初期費用(100,000円)</button>
-        <button onClick={cannel}>Cannel</button>
+
+        <Form>
+          <Form.Group className="mb-3" controlId="formBasicEmail">
+            <Form.Label>請求金額 USD</Form.Label>
+            <Form.Control value={amount} onChange={(event) => { setAmount(event.target.value)}} type="number" placeholder="USD" />
+            <Form.Text className="text-muted">
+              POSにてこのお客様に請求されます
+            </Form.Text>
+          </Form.Group>
+          <Button onClick={collect} variant="primary" type="submit">
+            請求
+          </Button>
+          <Button variant="secondary" onClick={cannel}>Cannel</Button>
+        </Form>
+
       </div>
-      <div>
-        {customer && 
-        <li><Link to={`/customers/${customer.id}/portal`}>カスタマーポータル</Link></li>
-        }
-      </div>
-    </>
+      </Row>
+    </Container>
   )
 }

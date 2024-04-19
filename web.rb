@@ -345,8 +345,9 @@ end
 
 get '/api/customers/:id' do
   cards = Stripe::Customer.list_payment_methods(params[:id], {type: 'card'})
+  unique_cards = cards.data.uniq { |card| [card.card.fingerprint] }
   customer = Stripe::Customer.retrieve(params[:id])
-  customer['cards'] = cards.data
+  customer['cards'] = unique_cards
 
   return customer.to_json
 end
@@ -384,9 +385,25 @@ post '/api/customers/:id/portal_session' do
 end
 
 get '/api/customers/:id/payment_intents' do
-  pis = Stripe::PaymentIntent.list({limit: 10})
+  pis = Stripe::PaymentIntent.list({limit: 10, customer: params[:id]})
 
   return pis.to_json
+end
+
+get '/api/payment_intents/:id' do
+  pi = Stripe::PaymentIntent.retrieve(params[:id])
+
+  return pi.to_json
+end
+
+post '/api/payment_intents/:id/confirm/:pm_id' do
+  pi = Stripe::PaymentIntent.confirm(params[:id],
+                                     {
+                                       payment_method: params[:pm_id],
+                                       return_url: 'https://www.example.com',
+                                     })
+
+  return pi.to_json
 end
 
 get '/api/terminal/:id' do
