@@ -352,6 +352,23 @@ get '/api/customers/:id' do
   return customer.to_json
 end
 
+post '/api/customers/:id/payment_intent' do
+  req = JSON.parse(request.body.read)
+  amount = req['amount']
+
+  payment_intent = Stripe::PaymentIntent.create(
+    amount: amount,
+    currency: 'usd',
+    customer: params[:id],
+  )
+
+  {
+    id: payment_intent.id,
+    clientSecret: payment_intent.client_secret,
+    status: payment_intent.status
+  }.to_json
+end
+
 post '/api/customers/:id/payment_intent/:pm' do
   payment_intent = Stripe::PaymentIntent.create(
     amount: 1000,
