@@ -13,11 +13,13 @@ import Table from 'react-bootstrap/Table';
 
 import Button from 'react-bootstrap/Button';
 import Form from 'react-bootstrap/Form';
+import QRCode from "react-qr-code";
 
 export default function Customer(prop) {
   let { id } = useParams();
   const [customer, setCustomer] = useState({});
   const [paymentIntents, setPaymentIntents] = useState({});
+  const [piCust, setPiCust] = useState(null);
   const terminal = 'tmr_Fcd9lADqPm3A5q'
 
   const [amount, setAmount] = useState(0);
@@ -53,6 +55,17 @@ export default function Customer(prop) {
     fetch(`${API_URL}/api/terminal/${terminal}/cannel`, {
       method: "POST",
     }).then(async(r) => {
+      console.log(r)
+    });
+  }
+
+  let createPaymentIntentQR = () => {
+    fetch(`${API_URL}/api/customers/${id}/payment_intent`, {
+      method: "POST",
+      body: JSON.stringify({amount: 200 * 100 })
+    }).then(async(r) => {
+      const pi = await r.json();
+      setPiCust(`${pi.id},${id}`)
     });
   }
 
@@ -123,6 +136,7 @@ export default function Customer(prop) {
               <tr>
                 <td><TimeFormatter timestamp={pi.created}></TimeFormatter></td>
                 <td>{pi.amount/100} {pi.currency}</td>
+                <td>{pi.status}</td>
                 <td>{ (pi.payment_method_types[0] === 'card') ? "online" : "card_present" }</td>
               </tr>
             ))}
@@ -148,6 +162,20 @@ export default function Customer(prop) {
         </Form>
 
       </div>
+      </Row>
+      <Row>
+        <h3>QR on POS</h3>
+        <Form.Group className="mb-3" controlId="formBasicEmail">
+          <Form.Label>請求金額 USD</Form.Label>
+            <Form.Control value={amount} onChange={(event) => { setAmount(event.target.value)}} type="number" placeholder="USD" />
+            <Form.Text className="text-muted">
+              QRにてこのお客様に請求されます
+            </Form.Text>
+        </Form.Group>
+        <Button onClick={createPaymentIntentQR}>QR</Button>
+        { piCust != null &&
+        <QRCode value={piCust} />
+        }
       </Row>
     </Container>
   )
