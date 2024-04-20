@@ -18,6 +18,7 @@ import {
 import Container from 'react-bootstrap/Container';
 import Row from 'react-bootstrap/Row';
 import Col from 'react-bootstrap/Col';
+import Button from 'react-bootstrap/Button';
 
 export default function CustomerPortal(prop) {
   let { id } = useParams();
@@ -37,13 +38,6 @@ export default function CustomerPortal(prop) {
         const cus = await r.json();
         setCustomer(cus);
         setCard(cus.cards[0])
-        fetch(`/api/customers/${id}/payment_intent/${cus.cards[0].id}`, {
-          method: "POST",
-          body: JSON.stringify({}),
-        }).then(async (result) => {
-          var { clientSecret } = await result.json();
-          setClientSecret(clientSecret);
-        });
       });
     }
   }, []);
@@ -55,6 +49,29 @@ export default function CustomerPortal(prop) {
     });
   }, []);
 
+
+  const setOnlinePayment = () => {
+    fetch(`/api/customers/${id}/payment_intent/${customer.cards[0].id}`, {
+      method: "POST",
+      body: JSON.stringify({}),
+    }).then(async (result) => {
+      var { clientSecret } = await result.json();
+      setClientSecret(clientSecret);
+    });
+  }
+
+  const setDefault = (pid) => {
+
+    fetch(`/api/customers/${id}/attach_default/${pid}`, {
+      method: "POST",
+      body: JSON.stringify({}),
+    }).then(async (result) => {
+      var customer = await result.json();
+      setCustomer(customer)
+    });
+
+  }
+
   return (
     <Container>
       {customer && (
@@ -63,35 +80,35 @@ export default function CustomerPortal(prop) {
             <h2>Customer: {customer.name || "Customer"}</h2>
             <QRCode value={id} />
           </Row>
-          <Row>
-            <h2>オンラインで購入</h2>
-            <div>購入 10 usdを保存したカード</div>
-            {clientSecret &&
-            <Elements stripe={stripePromise}>
-              <Confirm clientSecret={clientSecret} card={card}/>
-            </Elements>
-            }
-            <h3>Card</h3>
-            <Table>
-              <thead>
-                <tr> 
-                  <th>brand</th>
-                  <th>last4</th>
-                  <th>type</th>
+        <Row>
+          <h3>Card</h3>
+          <Table>
+            <thead>
+              <tr> 
+                <th>brand</th>
+                <th>last4</th>
+                <th>type</th>
+                <th>支払い</th>
+              </tr>
+            </thead>
+            <tbody>
+              {customer && customer.cards && customer.cards.map((card, index) => (
+                <tr>
+                  <td>{card.card.display_brand}</td>
+                  <td>**** **** {card.card.last4}</td>
+                  <td>{card.card.generated_from?.payment_method_details?.type || 'online' } </td>
+                  <td>{(card.id == customer.invoice_settings.default_payment_method) ? (
+                    "default"
+                  ) : (
+                    <Button variant="link" onClick={() => setDefault(card.id)}>set</Button>
+                    )}
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {customer && customer.cards && customer.cards.map((card, index) => (
-                  <tr>
-                    <td>{card.card.display_brand}</td>
-                    <td>**** **** {card.card.last4}</td>
-                    <td>{card.card.generated_from?.payment_method_details?.type || 'online' } </td>
-                  </tr>
-                ))}
-              </tbody>
-            </Table>
-          </Row>
-        </>
+              ))}
+            </tbody>
+          </Table>
+        </Row>
+    </>
       )}
     </Container>
   )

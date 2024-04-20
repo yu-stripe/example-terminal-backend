@@ -413,6 +413,14 @@ get '/api/payment_intents/:id' do
   return pi.to_json
 end
 
+post '/api/customers/:id/attach_default/:pm_id' do
+  customer = Stripe::Customer.update(params[:id], {invoice_settings: {default_payment_method: params[:pm_id]}})
+  cards = Stripe::Customer.list_payment_methods(params[:id], {type: 'card'})
+  unique_cards = cards.data.uniq { |card| [card.card.fingerprint] }
+  customer['cards'] = unique_cards
+  return customer.to_json
+end
+
 post '/api/customers/:id/payment_intents/:pi_id/confirm' do
   customer = Stripe::Customer.retrieve(params[:id])
   return "error" if customer.nil? or customer.invoice_settings.default_payment_method.nil?

@@ -62,7 +62,7 @@ export default function Customer(prop) {
   let createPaymentIntentQR = () => {
     fetch(`${API_URL}/api/customers/${id}/payment_intent`, {
       method: "POST",
-      body: JSON.stringify({amount: 200 * 100 })
+      body: JSON.stringify({amount: amount * 100 })
     }).then(async(r) => {
       const pi = await r.json();
       setPiCust(`${pi.id},${id}`)
