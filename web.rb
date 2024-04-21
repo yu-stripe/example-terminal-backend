@@ -340,7 +340,7 @@ post '/create_location' do
 end
 
 get '/api/customers' do
-  return Stripe::Customer.list({limit: 3}).to_json
+  return Stripe::Customer.list({limit: 5}).to_json
 end
 
 get '/api/customers/:id' do
