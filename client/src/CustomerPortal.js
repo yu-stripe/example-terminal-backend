@@ -77,7 +77,7 @@ export default function CustomerPortal(prop) {
       {customer && (
         <>
           <Row>
-            <h2>Customer: {customer.name || "Customer"}</h2>
+            <h2>顧客画面: {customer.name || "Customer"}</h2>
             <QRCode value={id} />
           </Row>
         <Row>

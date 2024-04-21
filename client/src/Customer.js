@@ -72,8 +72,9 @@ export default function Customer(prop) {
   return (
     <Container>
       <Row>
-        <h2>Merchant: {customer.name}</h2>
+        <h2>Merchant画面: {customer.name}</h2>
         <Table>
+          <h3>基本情報</h3>
           <thead>
           </thead>
           <tbody>
@@ -97,10 +98,16 @@ export default function Customer(prop) {
               <th>カスタマー画面 </th>
               <td> {customer && <Link to={`/customers/${customer.id}/portal`}>LINK</Link> } </td>
             </tr>
-            </tbody>
+            {customer && customer.metadata && Object.entries(customer.metadata).map(([key, value], index) => (
+              <tr>
+                <th>{key}</th>
+                <td>{value}</td>
+              </tr>
+            ))}
+          </tbody>
         </Table>
       </Row>
-      <Row>
+    <Row>
         <h3>Card</h3>
         <Table>
           <thead>
@@ -128,6 +135,7 @@ export default function Customer(prop) {
             <tr>
               <td>date</td>
               <td>amount</td>
+              <td>status</td>
               <td>type</td>
             </tr>
           </thead>
@@ -165,6 +173,9 @@ export default function Customer(prop) {
       </Row>
       <Row>
         <h3>QR on POS</h3>
+        { piCust != null &&
+        <QRCode value={piCust} />
+        }
         <Form.Group className="mb-3" controlId="formBasicEmail">
           <Form.Label>請求金額 USD</Form.Label>
             <Form.Control value={amount} onChange={(event) => { setAmount(event.target.value)}} type="number" placeholder="USD" />
@@ -173,9 +184,6 @@ export default function Customer(prop) {
             </Form.Text>
         </Form.Group>
         <Button onClick={createPaymentIntentQR}>QR</Button>
-        { piCust != null &&
-        <QRCode value={piCust} />
-        }
       </Row>
     </Container>
   )
