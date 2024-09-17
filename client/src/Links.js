@@ -19,12 +19,12 @@ import {
 
 export default function Links(props) {
   const [clientSecret, setClientSecret] = useState(null);
-  const [amount, setAmount] = React.useState(10000);
-  const [product_name, setProductName] = React.useState("シャツ");
+  const [amount, setAmount] = React.useState(null);
+  const [product_name, setProductName] = React.useState("");
   const [file, setFile] = useState(null);
   const [newKey, setNewKey] = useState('注文番号');
-  const [newValue, setNewValue] = useState('MR-1234');
-
+  const [newValue, setNewValue] = useState('');
+  const [loading, setLoading] = useState(false);
 
   const [link,setLink] = useState({}); 
 
@@ -32,6 +32,7 @@ export default function Links(props) {
 
   const createLink = async (event) => {
     event.preventDefault();
+    setLoading(true);
     const formData = new FormData();
     formData.append('amount', amount);
     formData.append('product_name', product_name);
@@ -47,6 +48,7 @@ export default function Links(props) {
     });
     const data = await response.json();
     setLink({url: data.url, product_name: product_name, price: amount});
+    setLoading(false);
     return data;
   }
 
@@ -59,6 +61,7 @@ export default function Links(props) {
             <InputGroup>
               <InputGroup.Text>¥</InputGroup.Text>
            <Form.Control 
+             required
               type="number"
               value={amount}
               placeholder="Enter Price"
@@ -68,6 +71,7 @@ export default function Links(props) {
          <Form.Group className="mb-3" controlId="Amount">
            <Form.Label>商品名</Form.Label>
            <Form.Control
+             required
              type="text"
              value={product_name}
              onChange={(event) => { setProductName(event.target.value); }}
@@ -83,15 +87,7 @@ export default function Links(props) {
 
 
         <Form.Group as={Row} className="mb-3">
-          <Form.Label column sm="2">Metadata</Form.Label>
-          <Col sm="4">
-            <Form.Control 
-              type="text" 
-              placeholder="Key" 
-              value={newKey}
-              onChange={(e) => setNewKey(e.target.value)}
-            />
-          </Col>
+          <Form.Label column sm="2">{newKey}</Form.Label>
           <Col sm="4">
             <Form.Control 
               type="text" 
@@ -106,9 +102,11 @@ export default function Links(props) {
            Submit
          </Button>
       </Form>
+       <hr />
+      {loading && <p>作成中...</p>}
       {link.url &&
       <>
-        <h3>リンク</h3>
+        <h3>Payment Link</h3>
         <a href={link.url}>{link.product_name} {link.price}円</a>
         </>
       }
