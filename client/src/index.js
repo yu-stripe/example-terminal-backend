@@ -3,11 +3,10 @@ import ReactDOM from 'react-dom/client';
 import './index.css';
 import App from './App';
 import reportWebVitals from './reportWebVitals';
-//export const API_URL = "https://example-terminal-backend-l8i6.onrender.com" 
-export const API_URL = "http://localhost:4567"
-//export const STRIPE_KEY = "pk_test_51Oh4JADoruLo2b1wGQxY3JEp9oCp3YCeWMjkET5YCSzDpNduUXGZRV7gVEYx47nIMKeT3d6HQCVCTZxYBPVlxtIS00a5dXFwoX"
+export const API_URL = "https://example-terminal-backend-l8i6.onrender.com" 
+//export const API_URL = "http://localhost:4567"
 
-export const STRIPE_KEY = "pk_test_51NQQoIEzgtKktpOy7rP0KtN9n9zBguSzEPYRvjaGuDzcFek2N9gN69tikNBWtdb2Pq2FkkHYWks0qydQBcJEpu3i00SbjW9HWP"
+export const STRIPE_KEY = "pk_live_51Oh4JADoruLo2b1w5SqSRBE243cruQO8fbcdSw7jiqdoabS4cwKHxM7LTO5WLEWgQ9bDqpF9dJm1Tbc5UwO5aotK00HYjCZZAk"
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
   <React.StrictMode>
