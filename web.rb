@@ -24,7 +24,7 @@ end
 
 Dotenv.load
 Stripe.api_key = ENV['STRIPE_ENV'] == 'production' ? ENV['STRIPE_SECRET_KEY'] : ENV['STRIPE_TEST_SECRET_KEY']
-Stripe.api_version = '2024-04-10; custom_checkout_beta=v1'
+#Stripe.api_version = '2024-04-10; custom_checkout_beta=v1'
 
 def log_info(message)
   puts "\n" + message + "\n\n"
