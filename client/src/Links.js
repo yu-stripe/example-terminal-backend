@@ -1,6 +1,7 @@
 import * as React from 'react';
 import { STRIPE_KEY, API_URL } from './index.js'
 import { useState, useEffect } from "react";
+import QRCode from "react-qr-code";
 import { loadStripe } from "@stripe/stripe-js";
 import { 
   useStripe,
@@ -107,6 +108,9 @@ export default function Links(props) {
       <>
         <h3>Payment Link</h3>
         <a href={link.url}>{link.product_name} {link.price}円</a>
+        <div>
+        <QRCode value={link.url} />
+          </div>
         </>
       }
 
