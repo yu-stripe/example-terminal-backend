@@ -19,6 +19,7 @@ import Container from 'react-bootstrap/Container';
 import Row from 'react-bootstrap/Row';
 import Col from 'react-bootstrap/Col';
 import Button from 'react-bootstrap/Button';
+import Form from 'react-bootstrap/Form';
 
 export default function CustomerPortal(prop) {
   let { id } = useParams();
@@ -107,6 +108,9 @@ export default function CustomerPortal(prop) {
               ))}
             </tbody>
           </Table>
+        </Row>
+        <Row>
+          <h3>Online</h3>
         </Row>
     </>
       )}

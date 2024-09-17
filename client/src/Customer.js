@@ -20,6 +20,7 @@ export default function Customer(prop) {
   const [customer, setCustomer] = useState({});
   const [paymentIntents, setPaymentIntents] = useState({});
   const [piCust, setPiCust] = useState(null);
+  const [pI, setPi] = useState(null);
   const terminal = 'tmr_Fcd9lADqPm3A5q'
 
   const [amount, setAmount] = useState(0);
@@ -66,6 +67,16 @@ export default function Customer(prop) {
     }).then(async(r) => {
       const pi = await r.json();
       setPiCust(`${pi.id},${id}`)
+    });
+  }
+
+  let createPaymentIntent = () => {
+    fetch(`${API_URL}/api/customers/${id}/payment_intent`, {
+      method: "POST",
+      body: JSON.stringify({amount: amount * 100 })
+    }).then(async(r) => {
+      const pi = await r.json();
+      setPi(`${pi.id}`)
     });
   }
 
@@ -184,6 +195,20 @@ export default function Customer(prop) {
             </Form.Text>
         </Form.Group>
         <Button onClick={createPaymentIntentQR}>QR</Button>
+      </Row>
+      <Row>
+        <h3>LIVE </h3>
+        { pI != null &&
+        <QRCode value={pI} />
+        }
+        <Form.Group className="mb-3" controlId="formBasicEmail">
+          <Form.Label>請求金額 USD</Form.Label>
+            <Form.Control value={amount} onChange={(event) => { setAmount(event.target.value)}} type="number" placeholder="USD" />
+            <Form.Text className="text-muted">
+              QRにてこのお客様に請求されます
+            </Form.Text>
+        </Form.Group>
+        <Button onClick={createPaymentIntent}>Online</Button>
       </Row>
     </Container>
   )

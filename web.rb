@@ -24,7 +24,7 @@ end
 
 Dotenv.load
 Stripe.api_key = ENV['STRIPE_ENV'] == 'production' ? ENV['STRIPE_SECRET_KEY'] : ENV['STRIPE_TEST_SECRET_KEY']
-Stripe.api_version = '2020-03-02'
+Stripe.api_version = '2024-04-10; custom_checkout_beta=v1'
 
 def log_info(message)
   puts "\n" + message + "\n\n"
@@ -458,3 +458,85 @@ post '/api/terminal/:id/payment_intent' do
   process = Stripe::Terminal::Reader.process_payment_intent(params[:id], {payment_intent: intent.id})
   return process.to_json
 end
+
+
+post '/api/custom_checkout' do
+  # セッションを作成する
+  session = Stripe::Checkout::Session.create(
+    line_items: [
+      {
+        price: 'price_1PR4FZEzgtKktpOyE7hJ0ZLR',
+        quantity: 1,
+      }
+    ],
+    allow_promotion_codes: true,
+    mode: 'payment',
+    ui_mode: 'custom',
+    return_url: 'https://your_return_url.com'
+  )
+
+  # JSON形式でクライアントに返す
+  content_type :json
+  { clientSecret: session.client_secret }.to_json
+end
+
+
+post '/api/payment_link' do
+  if request.media_type == 'multipart/form-data'
+    amount = params[:amount]
+    product_name = params[:product_name]
+    file = params[:file]
+    metadata = JSON.parse(params[:metadata])
+  else
+    # JSON データの処理（既存のコード）
+    req = JSON.parse(request.body.read)
+    amount = req['amount']
+    product_name = req['product_name']
+    metadata = req['metadata']
+    file = nil
+  end
+
+  begin
+    stripe_file = nil
+    if file && file[:tempfile]
+      # Stripeにファイルをアップロード
+      stripe_file = Stripe::File.create(
+        {
+          purpose: 'business_logo',
+          file: File.new(file[:tempfile])
+        }
+      )
+      unless stripe_file.nil?
+        stripe_file_link = Stripe::FileLink.create(file: stripe_file.id)
+      end
+    end
+
+    # 支払いリンクを作成する
+    product = Stripe::Product.create(
+      name: product_name,
+      default_price_data: {
+        currency: 'jpy',
+        unit_amount: amount.to_i,
+      },
+      images: stripe_file_link ? [stripe_file_link.url] : nil
+    )
+
+    link = Stripe::PaymentLink.create(
+      line_items: [{
+        price: product.default_price,
+        quantity: 1,
+      }],
+      metadata: metadata
+    )
+
+    content_type :json
+    { url: link.url }.to_json
+  rescue Stripe::StripeError => e
+    status 400
+    { error: e.message }.to_json
+  rescue => e
+    status 500
+    { error: "An unexpected error occurred: #{e.message}" }.to_json
+  end
+end
+
