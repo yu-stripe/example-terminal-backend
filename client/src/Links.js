@@ -77,6 +77,13 @@ export default function Links(props) {
              onChange={(event) => { setProductName(event.target.value); }}
              placeholder="Enter Product Name" />
          </Form.Group>
+         <Form.Group className="mb-3" controlId="File">
+           <Form.Label>ファイル</Form.Label>
+           <Form.Control
+             type="file"
+             onChange={(event) => { setFile(event.target.files[0]); }}
+           />
+         </Form.Group>
 
         <Form.Group as={Row} className="mb-3">
           <Form.Label column sm="2">{newKey}</Form.Label>
