@@ -526,7 +526,10 @@ post '/api/payment_link' do
         price: product.default_price,
         quantity: 1,
       }],
-      metadata: metadata
+      metadata: metadata,
+      payment_intent_data: {
+        metadata: metadata
+      }
     )
 
     content_type :json
