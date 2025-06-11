@@ -23,7 +23,7 @@ options "*" do
 end
 
 Dotenv.load
-Stripe.api_key = ENV['STRIPE_ENV'] == 'production' ? ENV['STRIPE_SECRET_KEY'] : ENV['STRIPE_TEST_SECRET_KEY']
+Stripe.api_key = ENV['STRIPE_SECRET_KEY']
 #Stripe.api_version = '2024-04-10; custom_checkout_beta=v1'
 
 def log_info(message)
@@ -47,6 +47,13 @@ def validateApiKey
     return "Error: you used a live mode secret key to set up the example backend. Please use your test mode secret key. For more information, see https://stripe.com/docs/keys#test-live-modes"
   end
   return nil
+end
+
+
+get '/token' do
+  return {
+    public_key: ENV['STRIPE_PUBLISHABLE_KEY'] 
+  }.to_json
 end
 
 # This endpoint registers a Verifone P400 reader to your Stripe account.
