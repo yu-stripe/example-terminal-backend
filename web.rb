@@ -24,6 +24,8 @@ end
 
 Dotenv.load
 Stripe.api_key = ENV['STRIPE_SECRET_KEY']
+endpoint_secret = ENV['STRIPE_ENDPOINT_SECRET']
+
 #Stripe.api_version = '2024-04-10; custom_checkout_beta=v1'
 
 def log_info(message)
@@ -665,10 +667,11 @@ end
 post '/webhook' do
   payload = request.body.read
   event = nil
+  sig_header = request.env['HTTP_STRIPE_SIGNATURE']
 
   begin
-    event = Stripe::Event.construct_from(
-      JSON.parse(payload, symbolize_names: true)
+    event = Stripe::Webhook.construct_event(
+      payload, sig_header, endpoint_secret
     )
   rescue JSON::ParserError => e
     # Invalid payload
