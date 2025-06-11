@@ -29,7 +29,7 @@ export default function Links(props) {
 
   const [link,setLink] = useState({}); 
 
-  const stripe = loadStripe(STRIPE_KEY);
+  const stripe = loadStripe(props.stripeKey);
 
   const createLink = async (event) => {
     event.preventDefault();

@@ -4,7 +4,6 @@ import QRCode from "react-qr-code";
 import PricingPage from './PricePage.js'
 import BuyButton from './BuyButton.js'
 import { API_URL } from './index.js'
-import { STRIPE_KEY } from './index.js'
 import Confirm from './Confirm.js'
 import Table from 'react-bootstrap/Table';
 
@@ -27,7 +26,7 @@ export default function CustomerPortal(prop) {
   const [portal, setPortal] = useState({});
   const [card, setCard] = useState({});
 
-  const stripePromise = loadStripe(STRIPE_KEY);
+  const stripePromise = loadStripe(prop.stripeKey);
   const [clientSecret, setClientSecret] = useState("");
   const initialized = useRef(false)
 

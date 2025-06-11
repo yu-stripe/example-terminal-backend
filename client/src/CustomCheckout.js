@@ -10,7 +10,7 @@ import CheckoutForm from "./CheckoutForm";
 
 export default function CustomCheckout(props) {
   const [clientSecret, setClientSecret] = useState(null);
-  const stripe = loadStripe(STRIPE_KEY, {
+  const stripe = loadStripe(props.stripeKey, {
       betas: ['custom_checkout_beta_2'],
   });
 
