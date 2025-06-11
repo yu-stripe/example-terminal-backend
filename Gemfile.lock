@@ -7,8 +7,8 @@ GEM
     json (2.6.2)
     mustermann (3.0.0)
       ruby2_keywords (~> 0.0.1)
-    nio4r (2.5.8)
-    puma (6.0.0)
+    nio4r (2.7.4)
+    puma (6.6.0)
       nio4r (~> 2.0)
     rack (2.2.6.4)
     rack-protection (3.0.4)
@@ -26,13 +26,14 @@ GEM
 PLATFORMS
   arm64-darwin-21
   arm64-darwin-22
+  arm64-darwin-24
   x86_64-linux
 
 DEPENDENCIES
   dotenv
   encrypted_cookie
   json
-  puma
+  puma (~> 6.6.0)
   sinatra
   sinatra-cross_origin
   stripe
