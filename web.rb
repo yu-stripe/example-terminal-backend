@@ -461,10 +461,10 @@ post '/api/terminal/:id/payment_intent' do
     customer: customer,
     payment_method_types: ['card_present'],
     amount: amount,
-    setup_future_usage: "off_session"
+    setup_future_usage: "off_session",
   })
 
-  process = Stripe::Terminal::Reader.process_payment_intent(params[:id], {payment_intent: intent.id})
+  process = Stripe::Terminal::Reader.process_payment_intent(params[:id], {payment_intent: intent.id, process_config: {allow_redisplay: 'always'}})
   return process.to_json
 end
 

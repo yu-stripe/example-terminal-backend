@@ -343,7 +343,7 @@ export default function Customer(prop) {
                         <TimeFormatter timestamp={pi.created}></TimeFormatter>
                       </div>
                       <div className="stripe-list-item-subtitle">
-                        {(pi.payment_method_types[0] === 'card') ? "Online Payment" : "Card Present"}
+                        {(pi.payment_method_types[0] === 'card') ? "オンライン支払い" : "店頭支払い"}
                       </div>
                     </div>
                     <div className="stripe-flex stripe-items-center stripe-gap-3">
