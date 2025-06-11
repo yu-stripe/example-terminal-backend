@@ -1,0 +1,413 @@
+/* Stripe-inspired design system */
+:root {
+  --stripe-purple: #635bff;
+  --stripe-purple-dark: #5a54d9;
+  --stripe-purple-light: #7c7cff;
+  --stripe-blue: #00d4ff;
+  --stripe-green: #00d924;
+  --stripe-orange: #ff5722;
+  --stripe-red: #df1b41;
+  --stripe-gray-50: #fafbfc;
+  --stripe-gray-100: #f6f9fc;
+  --stripe-gray-200: #e3e8ee;
+  --stripe-gray-300: #dae1e7;
+  --stripe-gray-400: #9ca3af;
+  --stripe-gray-500: #6b7280;
+  --stripe-gray-600: #4b5563;
+  --stripe-gray-700: #374151;
+  --stripe-gray-800: #1f2937;
+  --stripe-gray-900: #0f172a;
+  --stripe-white: #ffffff;
+  --stripe-black: #000000;
+  
+  /* Typography */
+  --font-family-primary: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Ubuntu, sans-serif;
+  --font-family-mono: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace;
+  
+  /* Spacing */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+  --space-20: 80px;
+  
+  /* Border radius */
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
+  
+  /* Shadows */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+}
+
+/* Reset and base styles */
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  font-family: var(--font-family-primary);
+  background-color: var(--stripe-gray-50);
+  color: var(--stripe-gray-800);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Layout components */
+.stripe-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 var(--space-6);
+}
+
+.stripe-page {
+  min-height: 100vh;
+  background-color: var(--stripe-gray-50);
+}
+
+/* Header */
+.stripe-header {
+  background-color: var(--stripe-white);
+  border-bottom: 1px solid var(--stripe-gray-200);
+  padding: var(--space-4) 0;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.stripe-header-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.stripe-logo {
+  font-size: 24px;
+  font-weight: 600;
+  color: var(--stripe-purple);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.stripe-nav {
+  display: flex;
+  gap: var(--space-8);
+}
+
+.stripe-nav-link {
+  color: var(--stripe-gray-600);
+  text-decoration: none;
+  font-weight: 500;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  transition: all 0.2s ease;
+}
+
+.stripe-nav-link:hover {
+  color: var(--stripe-purple);
+  background-color: var(--stripe-gray-100);
+}
+
+.stripe-nav-link.active {
+  color: var(--stripe-purple);
+  background-color: var(--stripe-purple);
+  background-color: rgba(99, 91, 255, 0.1);
+}
+
+/* Main content */
+.stripe-main {
+  padding: var(--space-12) 0;
+}
+
+/* Typography */
+.stripe-h1 {
+  font-size: 32px;
+  font-weight: 600;
+  color: var(--stripe-gray-900);
+  margin: 0 0 var(--space-6) 0;
+  line-height: 1.2;
+}
+
+.stripe-h2 {
+  font-size: 24px;
+  font-weight: 600;
+  color: var(--stripe-gray-900);
+  margin: 0 0 var(--space-5) 0;
+  line-height: 1.3;
+}
+
+.stripe-h3 {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--stripe-gray-900);
+  margin: 0 0 var(--space-4) 0;
+  line-height: 1.4;
+}
+
+.stripe-text {
+  color: var(--stripe-gray-600);
+  margin: 0 0 var(--space-4) 0;
+}
+
+.stripe-text-sm {
+  font-size: 14px;
+  color: var(--stripe-gray-500);
+}
+
+/* Cards */
+.stripe-card {
+  background-color: var(--stripe-white);
+  border: 1px solid var(--stripe-gray-200);
+  border-radius: var(--radius-lg);
+  padding: var(--space-6);
+  box-shadow: var(--shadow-sm);
+  transition: all 0.2s ease;
+}
+
+.stripe-card:hover {
+  box-shadow: var(--shadow-md);
+  border-color: var(--stripe-gray-300);
+}
+
+.stripe-card-header {
+  margin-bottom: var(--space-5);
+  padding-bottom: var(--space-4);
+  border-bottom: 1px solid var(--stripe-gray-200);
+}
+
+.stripe-card-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--stripe-gray-900);
+  margin: 0;
+}
+
+.stripe-card-subtitle {
+  font-size: 14px;
+  color: var(--stripe-gray-500);
+  margin: var(--space-1) 0 0 0;
+}
+
+/* Lists */
+.stripe-list {
+  background-color: var(--stripe-white);
+  border: 1px solid var(--stripe-gray-200);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+
+.stripe-list-item {
+  padding: var(--space-4) var(--space-6);
+  border-bottom: 1px solid var(--stripe-gray-200);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-decoration: none;
+  color: inherit;
+}
+
+.stripe-list-item:last-child {
+  border-bottom: none;
+}
+
+.stripe-list-item:hover {
+  background-color: var(--stripe-gray-50);
+}
+
+.stripe-list-item-content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.stripe-list-item-title {
+  font-weight: 500;
+  color: var(--stripe-gray-900);
+  margin: 0;
+}
+
+.stripe-list-item-subtitle {
+  font-size: 14px;
+  color: var(--stripe-gray-500);
+  margin: 0;
+}
+
+.stripe-list-item-meta {
+  font-size: 14px;
+  color: var(--stripe-gray-400);
+  font-family: var(--font-family-mono);
+}
+
+/* Buttons */
+.stripe-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-3) var(--space-5);
+  border: none;
+  border-radius: var(--radius-md);
+  font-weight: 500;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-decoration: none;
+  gap: var(--space-2);
+}
+
+.stripe-button-primary {
+  background-color: var(--stripe-purple);
+  color: var(--stripe-white);
+}
+
+.stripe-button-primary:hover {
+  background-color: var(--stripe-purple-dark);
+}
+
+.stripe-button-secondary {
+  background-color: var(--stripe-white);
+  color: var(--stripe-gray-700);
+  border: 1px solid var(--stripe-gray-300);
+}
+
+.stripe-button-secondary:hover {
+  background-color: var(--stripe-gray-50);
+  border-color: var(--stripe-gray-400);
+}
+
+/* Status badges */
+.stripe-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-xl);
+  font-size: 12px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.stripe-badge-success {
+  background-color: rgba(0, 217, 36, 0.1);
+  color: var(--stripe-green);
+}
+
+.stripe-badge-warning {
+  background-color: rgba(255, 87, 34, 0.1);
+  color: var(--stripe-orange);
+}
+
+.stripe-badge-error {
+  background-color: rgba(223, 27, 65, 0.1);
+  color: var(--stripe-red);
+}
+
+.stripe-badge-info {
+  background-color: rgba(99, 91, 255, 0.1);
+  color: var(--stripe-purple);
+}
+
+/* Grid */
+.stripe-grid {
+  display: grid;
+  gap: var(--space-6);
+}
+
+.stripe-grid-2 {
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+}
+
+.stripe-grid-3 {
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+}
+
+/* Utilities */
+.stripe-flex {
+  display: flex;
+}
+
+.stripe-flex-col {
+  flex-direction: column;
+}
+
+.stripe-items-center {
+  align-items: center;
+}
+
+.stripe-justify-between {
+  justify-content: space-between;
+}
+
+.stripe-gap-2 {
+  gap: var(--space-2);
+}
+
+.stripe-gap-4 {
+  gap: var(--space-4);
+}
+
+.stripe-gap-6 {
+  gap: var(--space-6);
+}
+
+.stripe-mb-4 {
+  margin-bottom: var(--space-4);
+}
+
+.stripe-mb-6 {
+  margin-bottom: var(--space-6);
+}
+
+.stripe-mt-4 {
+  margin-top: var(--space-4);
+}
+
+.stripe-mt-6 {
+  margin-top: var(--space-6);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .stripe-container {
+    padding: 0 var(--space-4);
+  }
+  
+  .stripe-main {
+    padding: var(--space-8) 0;
+  }
+  
+  .stripe-h1 {
+    font-size: 28px;
+  }
+  
+  .stripe-h2 {
+    font-size: 20px;
+  }
+  
+  .stripe-nav {
+    gap: var(--space-4);
+  }
+  
+  .stripe-card {
+    padding: var(--space-4);
+  }
+  
+  .stripe-list-item {
+    padding: var(--space-3) var(--space-4);
+  }
+}

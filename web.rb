@@ -466,6 +466,104 @@ post '/api/terminal/:id/payment_intent' do
   return process.to_json
 end
 
+# This endpoint initiates collecting email input from the terminal reader
+# https://docs.stripe.com/terminal/features/collect-inputs
+post '/api/terminal/:id/collect_email' do
+  validationError = validateApiKey
+  if !validationError.nil?
+    status 400
+    return log_info(validationError)
+  end
+
+  # Parse request body to get customer_id
+  req = JSON.parse(request.body.read) rescue {}
+  customer_id = req['customer_id']
+
+  begin
+    # Collect email input from the terminal reader with customer metadata
+    collect_inputs_params = {
+      inputs: [{
+        type: 'email',
+        custom_text: {
+          title: 'メールを登録してください',
+          description: '会員登録をして、特典をお送りします。',
+          submit_button: 'Submit',
+          skip_button: 'Skip',
+        },
+        required: false,
+      }]
+    }
+
+    # Add customer_id to metadata if provided
+    if customer_id
+      collect_inputs_params[:metadata] = { customer_id: customer_id }
+    end
+
+    collect_inputs = Stripe::Terminal::Reader.collect_inputs(
+      params[:id],
+      collect_inputs_params
+    )
+    p collect_inputs
+  rescue Stripe::StripeError => e
+    status 402
+    return log_info("Error collecting email input! #{e.message}")
+  end
+
+  log_info("Email collection initiated on reader: #{params[:id]} for customer: #{customer_id}")
+  status 200
+  return collect_inputs.to_json
+end
+
+# This endpoint retrieves the collected input results from the terminal reader
+# https://docs.stripe.com/terminal/features/collect-inputs
+get '/api/terminal/:id/collected_data' do
+  validationError = validateApiKey
+  if !validationError.nil?
+    status 400
+    return log_info(validationError)
+  end
+
+  begin
+    # Retrieve the reader to get the collected data
+    reader = Stripe::Terminal::Reader.retrieve(params[:id])
+    
+    # Check if there's any collected data in the reader's action
+    if reader.action && reader.action.type == 'collect_inputs'
+      collected_data = reader.action.collect_inputs
+      log_info("Retrieved collected data from reader: #{params[:id]}")
+      status 200
+      return collected_data.to_json
+    else
+      status 404
+      return log_info("No collected data found for reader: #{params[:id]}")
+    end
+  rescue Stripe::StripeError => e
+    status 402
+    return log_info("Error retrieving collected data! #{e.message}")
+  end
+end
+
+# This endpoint cancels the current collect inputs action on the terminal reader
+post '/api/terminal/:id/cancel_collect_inputs' do
+  validationError = validateApiKey
+  if !validationError.nil?
+    status 400
+    return log_info(validationError)
+  end
+
+  begin
+    # Cancel the current action on the reader
+    cancel_result = Stripe::Terminal::Reader.cancel_action(params[:id])
+  rescue Stripe::StripeError => e
+    status 402
+    return log_info("Error canceling collect inputs! #{e.message}")
+  end
+
+  log_info("Collect inputs canceled on reader: #{params[:id]}")
+  status 200
+  return cancel_result.to_json
+end
+
 
 post '/api/custom_checkout' do
   # セッションを作成する
@@ -550,3 +648,89 @@ post '/api/payment_link' do
   end
 end
 
+
+
+# Helper method to update customer with collected email
+def update_customer_with_email(customer_id, email)
+  begin
+    customer = Stripe::Customer.update(customer_id, { email: email })
+    log_info("Updated customer #{customer_id} with email: #{email}")
+    return customer
+  rescue Stripe::StripeError => e
+    log_info("Error updating customer #{customer_id} with email: #{e.message}")
+    return nil
+  end
+end
+
+post '/webhook' do
+  payload = request.body.read
+  event = nil
+
+  begin
+    event = Stripe::Event.construct_from(
+      JSON.parse(payload, symbolize_names: true)
+    )
+  rescue JSON::ParserError => e
+    # Invalid payload
+    status 400
+    return
+  end
+
+  # Handle the event
+  case event.type
+  when 'terminal.reader.action_succeeded'
+    reader = event.data.object # contains a Stripe::Terminal::Reader
+    log_info("Terminal reader action succeeded: #{reader.id}")
+    
+    # Check if this is a collect_inputs action
+    if reader.action && reader.action.type == 'collect_inputs'
+      action_data = reader.action.collect_inputs
+      
+      # Check if we have metadata with customer_id
+      if action_data.metadata && action_data.metadata.customer_id
+        customer_id = action_data.metadata.customer_id
+        
+        # Look for email input in the collected inputs
+        if action_data.inputs && action_data.inputs.length > 0
+          email_input = action_data.inputs.find { |input| input.type == 'email' }
+          
+          if email_input && email_input.email && email_input.email.value
+            collected_email = email_input.email.value
+            log_info("Collected email: #{collected_email} for customer: #{customer_id}")
+            
+            # Update the customer with the collected email
+            updated_customer = update_customer_with_email(customer_id, collected_email)
+            
+            if updated_customer
+              log_info("Successfully updated customer #{customer_id} with collected email")
+            else
+              log_info("Failed to update customer #{customer_id} with collected email")
+            end
+          else
+            log_info("No email value found in collected inputs")
+          end
+        else
+          log_info("No inputs found in collect_inputs action")
+        end
+      else
+        log_info("No customer_id found in metadata")
+      end
+    else
+      log_info("Action type is not collect_inputs: #{reader.action&.type}")
+    end
+    
+    # Print the full reader object for debugging
+    p reader
+    
+  when 'payment_method.attached'
+    payment_method = event.data.object # contains a Stripe::PaymentMethod
+    log_info("Payment method attached: #{payment_method.id}")
+    # Then define and call a method to handle the successful attachment of a PaymentMethod.
+    # handle_payment_method_attached(payment_method)
+  # ... handle other event types
+  else
+    log_info("Unhandled event type: #{event.type}")
+  end
+
+  status 200
+end
