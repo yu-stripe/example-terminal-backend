@@ -16,6 +16,10 @@ export default function App() {
     navigate("/custom-checkout")
   }
 
+  const goToTerminal = () => {
+    navigate("/terminal")
+  }
+
   return (
     <div className="stripe-page">
       {/* Header */}
@@ -26,6 +30,9 @@ export default function App() {
               Stripe Terminal Demo
             </div>
             <nav className="stripe-nav">
+              <div className="stripe-nav-link" onClick={goToTerminal}>
+                Terminal
+              </div>
               <div className="stripe-nav-link" onClick={goToCustomers}>
                 Customers
               </div>
@@ -52,7 +59,20 @@ export default function App() {
               for in-person payments, customer management, and checkout flows.
             </p>
             
-            <div className="stripe-grid stripe-grid-3" style={{ marginTop: '48px' }}>
+            <div className="stripe-grid stripe-grid-2" style={{ marginTop: '48px' }}>
+              <div className="stripe-card" onClick={goToTerminal} style={{ cursor: 'pointer' }}>
+                <div className="stripe-card-header">
+                  <h3 className="stripe-card-title">Terminal Readers</h3>
+                  <p className="stripe-card-subtitle">Select terminal device</p>
+                </div>
+                <p className="stripe-text">
+                  Choose and configure your terminal reader for in-person payment processing.
+                </p>
+                <div className="stripe-button stripe-button-primary">
+                  Select Terminal →
+                </div>
+              </div>
+
               <div className="stripe-card" onClick={goToCustomers} style={{ cursor: 'pointer' }}>
                 <div className="stripe-card-header">
                   <h3 className="stripe-card-title">Customers</h3>

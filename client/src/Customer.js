@@ -4,6 +4,8 @@ import { Link } from 'react-router-dom';
 import TimeFormatter from "./TimeFormatter"
 import { API_URL } from './index.js'
 import QRCode from "react-qr-code";
+import { useTerminal } from './context/TerminalContext';
+import TerminalStatusBar from './components/TerminalStatusBar';
 import './stripe-theme.css';
 
 export default function Customer(prop) {
@@ -13,11 +15,12 @@ export default function Customer(prop) {
   const [paymentIntents, setPaymentIntents] = useState({});
   const [piCust, setPiCust] = useState(null);
   const [pI, setPi] = useState(null);
-  const terminal = 'tmr_Fcd9lADqPm3A5q'
 
   const [amount, setAmount] = useState(0);
   const [collectedEmail, setCollectedEmail] = useState('');
   const [emailCollectionStatus, setEmailCollectionStatus] = useState('');
+
+  const { selectedTerminal } = useTerminal();
 
   useEffect(() => {
     fetch(`${API_URL}/api/customers/${id}`).then(async(r) => {
@@ -37,10 +40,16 @@ export default function Customer(prop) {
   }
 
   const collectEmail = () => {
+    if (!selectedTerminal) {
+      alert('Terminal not selected. Please select a terminal first.');
+      return;
+    }
+
     setEmailCollectionStatus('collecting');
     setCollectedEmail('');
     
-    fetch(`${API_URL}/api/terminal/${terminal}/collect_email`, {
+    // Use the new convenience endpoint that uses selected terminal from session
+    fetch(`${API_URL}/api/terminal/collect_email`, {
       method: "POST",
       headers: {
         'Content-Type': 'application/json',
@@ -54,8 +63,12 @@ export default function Customer(prop) {
         // Poll for collected data
         pollForCollectedEmail();
       } else {
+        const errorData = await r.json().catch(() => ({ error: 'Unknown error' }));
         setEmailCollectionStatus('error');
-        console.error('Failed to initiate email collection');
+        console.error('Failed to initiate email collection:', errorData.error);
+        if (errorData.error && errorData.error.includes('No terminal reader selected')) {
+          alert('No terminal reader selected. Please select a terminal first from the Terminal page.');
+        }
       }
     }).catch(error => {
       setEmailCollectionStatus('error');
@@ -72,18 +85,23 @@ export default function Customer(prop) {
 
   const pollForCollectedEmail = () => {
     const pollInterval = setInterval(() => {
-      fetch(`${API_URL}/api/terminal/${terminal}/collected_data`)
+      // Use the new convenience endpoint that uses selected terminal from session
+      fetch(`${API_URL}/api/terminal/collected_data`)
         .then(async(r) => {
           if (r.ok) {
             const data = await r.json();
-            if (data && data.email) {
-              setCollectedEmail(data.email);
-              setEmailCollectionStatus('collected');
-              clearInterval(pollInterval);
-              // Refresh customer data to show updated email
-              setTimeout(() => {
-                refreshCustomerData();
-              }, 2000); // Wait 2 seconds for webhook to process
+            if (data && data.inputs) {
+              // Find email input from collected inputs
+              const emailInput = data.inputs.find(input => input.type === 'email');
+              if (emailInput && emailInput.email && emailInput.email.value) {
+                setCollectedEmail(emailInput.email.value);
+                setEmailCollectionStatus('collected');
+                clearInterval(pollInterval);
+                // Refresh customer data to show updated email
+                setTimeout(() => {
+                  refreshCustomerData();
+                }, 2000); // Wait 2 seconds for webhook to process
+              }
             }
           } else if (r.status === 404) {
             // No data yet, continue polling
@@ -109,11 +127,25 @@ export default function Customer(prop) {
   }
 
   const cancelEmailCollection = () => {
-    fetch(`${API_URL}/api/terminal/${terminal}/cancel_collect_inputs`, {
+    if (!selectedTerminal) {
+      alert('Terminal not selected. Please select a terminal first.');
+      return;
+    }
+
+    // Use the new convenience endpoint that uses selected terminal from session
+    fetch(`${API_URL}/api/terminal/cancel_collect_inputs`, {
       method: "POST",
     }).then(async(r) => {
-      setEmailCollectionStatus('cancelled');
-      setCollectedEmail('');
+      if (r.ok) {
+        setEmailCollectionStatus('cancelled');
+        setCollectedEmail('');
+      } else {
+        const errorData = await r.json().catch(() => ({ error: 'Unknown error' }));
+        console.error('Error canceling email collection:', errorData.error);
+        if (errorData.error && errorData.error.includes('No terminal reader selected')) {
+          alert('No terminal reader selected. Please select a terminal first from the Terminal page.');
+        }
+      }
     }).catch(error => {
       console.error('Error canceling email collection:', error);
     });
@@ -140,18 +172,44 @@ export default function Customer(prop) {
 
   let collect = (e) => {
     e.preventDefault();
-    fetch(`${API_URL}/api/terminal/${terminal}/payment_intent`, {
+    if (!selectedTerminal) {
+      alert('Terminal not selected. Please select a terminal first.');
+      return;
+    }
+
+    fetch(`${API_URL}/api/terminal/${selectedTerminal}/payment_intent`, {
       method: "POST",
+      headers: {
+        'Content-Type': 'application/json',
+      },
       body: JSON.stringify({amount: amount * 100, customer: id, currency: 'jpy' })
     }).then(async(r) => {
+      if (r.ok) {
+        console.log('Payment intent created successfully');
+      } else {
+        console.error('Failed to create payment intent');
+      }
+    }).catch(error => {
+      console.error('Error creating payment intent:', error);
     });
   }
 
   let cannel = () => {
-    fetch(`${API_URL}/api/terminal/${terminal}/cannel`, {
+    if (!selectedTerminal) {
+      alert('Terminal not selected. Please select a terminal first.');
+      return;
+    }
+
+    fetch(`${API_URL}/api/terminal/${selectedTerminal}/cannel`, {
       method: "POST",
     }).then(async(r) => {
-      console.log(r)
+      if (r.ok) {
+        console.log('Action cancelled successfully');
+      } else {
+        console.error('Failed to cancel action');
+      }
+    }).catch(error => {
+      console.error('Error cancelling action:', error);
     });
   }
 
@@ -198,6 +256,9 @@ export default function Customer(prop) {
               Stripe Terminal Demo
             </div>
             <nav className="stripe-nav">
+              <Link to="/terminal" className="stripe-nav-link">
+                Terminal
+              </Link>
               <Link to="/customers" className="stripe-nav-link active">
                 Customers
               </Link>
@@ -211,6 +272,8 @@ export default function Customer(prop) {
           </div>
         </div>
       </header>
+
+              <TerminalStatusBar showClearButton={true} />
 
       {/* Main Content */}
       <main className="stripe-main">
@@ -433,7 +496,7 @@ export default function Customer(prop) {
               </div>
 
               <div className="stripe-text-sm" style={{ color: 'var(--stripe-gray-500)' }}>
-                Terminal ID: {terminal}
+                Terminal ID: {selectedTerminal}
               </div>
             </div>
           </div>

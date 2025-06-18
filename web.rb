@@ -4,6 +4,8 @@ require 'dotenv'
 require 'json'
 require 'sinatra/cross_origin'
 
+enable :sessions
+
 # Browsers require that external servers enable CORS when the server is at a different origin than the website.
 # https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS
 # This enables the requires CORS headers to allow the browser to make the requests from the JS Example App.
@@ -443,6 +445,113 @@ post '/api/customers/:id/payment_intents/:pi_id/confirm' do
   return pi.to_json
 end
 
+# This endpoint retrieves a list of Terminal Readers
+get '/api/terminal/readers' do
+  validationError = validateApiKey
+  if !validationError.nil?
+    status 400
+    return log_info(validationError)
+  end
+
+  begin
+    readers = Stripe::Terminal::Reader.list(
+      {
+        limit: params[:limit] || 100,
+        device_type: params[:device_type],
+        location: params[:location],
+        serial_number: params[:serial_number],
+        status: params[:status]
+      }.compact
+    )
+  rescue Stripe::StripeError => e
+    status 402
+    return log_info("Error retrieving terminal readers! #{e.message}")
+  end
+
+  log_info("Retrieved #{readers.data.length} terminal readers")
+  content_type :json
+  status 200
+  return readers.to_json
+end
+
+# This endpoint sets the selected terminal reader in session
+post '/api/terminal/select' do
+  begin
+    # Parse JSON request body
+    req = JSON.parse(request.body.read) rescue {}
+    reader_id = req['reader_id']
+    
+    if reader_id.nil? || reader_id.empty?
+      status 400
+      return { error: 'reader_id is required' }.to_json
+    end
+
+    # Validate that the reader exists and is accessible
+    reader = Stripe::Terminal::Reader.retrieve(reader_id)
+    
+    # Store the selected reader in session
+    session[:selected_reader_id] = reader_id
+    
+    log_info("Selected terminal reader: #{reader_id}")
+    content_type :json
+    status 200
+    return { reader_id: reader_id, status: 'selected' }.to_json
+    
+  rescue JSON::ParserError => e
+    status 400
+    return { error: 'Invalid JSON in request body' }.to_json
+  rescue Stripe::StripeError => e
+    status 402
+    return log_info("Error selecting terminal reader! #{e.message}")
+  end
+end
+
+# This endpoint gets the currently selected terminal reader from session
+get '/api/terminal/selected' do
+  reader_id = session[:selected_reader_id]
+  
+  if reader_id.nil?
+    content_type :json
+    status 200
+    return { reader_id: nil, status: 'none_selected' }.to_json
+  end
+
+  begin
+    # Validate that the reader still exists
+    reader = Stripe::Terminal::Reader.retrieve(reader_id)
+    
+    content_type :json
+    status 200
+    return { 
+      reader_id: reader_id, 
+      reader: reader,
+      status: 'selected' 
+    }.to_json
+    
+  rescue Stripe::StripeError => e
+    # Reader no longer exists, clear from session
+    session[:selected_reader_id] = nil
+    status 404
+    return { error: 'Selected reader no longer exists' }.to_json
+  end
+end
+
+# This endpoint clears the selected terminal reader from session
+post '/api/terminal/clear' do
+  begin
+    session[:selected_reader_id] = nil
+    
+    log_info("Terminal selection cleared from session")
+    content_type :json
+    status 200
+    return { status: 'cleared', message: 'Terminal selection has been cleared' }.to_json
+    
+  rescue => e
+    status 500
+    return { error: 'Failed to clear terminal selection' }.to_json
+  end
+end
+
 get '/api/terminal/:id' do
   return Stripe::Terminal::Reader.retrieve(params[:id]).to_json
 end
@@ -564,6 +673,124 @@ post '/api/terminal/:id/cancel_collect_inputs' do
   log_info("Collect inputs canceled on reader: #{params[:id]}")
   status 200
   return cancel_result.to_json
+end
+
+# Convenience endpoint that uses the selected terminal reader from session for collecting email
+post '/api/terminal/collect_email' do
+  validationError = validateApiKey
+  if !validationError.nil?
+    status 400
+    return log_info(validationError)
+  end
+
+  # Get selected reader from session
+  reader_id = session[:selected_reader_id]
+  if reader_id.nil?
+    status 400
+    return { error: 'No terminal reader selected. Please select a reader first.' }.to_json
+  end
+
+  # Parse request body to get customer_id
+  req = JSON.parse(request.body.read) rescue {}
+  customer_id = req['customer_id']
+
+  begin
+    # Collect email input from the selected terminal reader
+    collect_inputs_params = {
+      inputs: [{
+        type: 'email',
+        custom_text: {
+          title: 'メールを登録してください',
+          description: '会員登録をして、特典をお送りします。',
+          submit_button: 'Submit',
+          skip_button: 'Skip',
+        },
+        required: false,
+      }]
+    }
+
+    # Add customer_id to metadata if provided
+    if customer_id
+      collect_inputs_params[:metadata] = { customer_id: customer_id }
+    end
+
+    collect_inputs = Stripe::Terminal::Reader.collect_inputs(
+      reader_id,
+      collect_inputs_params
+    )
+    
+    log_info("Email collection initiated on selected reader: #{reader_id} for customer: #{customer_id}")
+    status 200
+    return collect_inputs.to_json
+    
+  rescue Stripe::StripeError => e
+    status 402
+    return log_info("Error collecting email input on selected reader! #{e.message}")
+  end
+end
+
+# Convenience endpoint that uses the selected terminal reader from session for getting collected data
+get '/api/terminal/collected_data' do
+  validationError = validateApiKey
+  if !validationError.nil?
+    status 400
+    return log_info(validationError)
+  end
+
+  # Get selected reader from session
+  reader_id = session[:selected_reader_id]
+  if reader_id.nil?
+    status 400
+    return { error: 'No terminal reader selected. Please select a reader first.' }.to_json
+  end
+
+  begin
+    # Retrieve the reader to get the collected data
+    reader = Stripe::Terminal::Reader.retrieve(reader_id)
+    
+    # Check if there's any collected data in the reader's action
+    if reader.action && reader.action.type == 'collect_inputs'
+      collected_data = reader.action.collect_inputs
+      log_info("Retrieved collected data from selected reader: #{reader_id}")
+      status 200
+      return collected_data.to_json
+    else
+      status 404
+      return log_info("No collected data found for selected reader: #{reader_id}")
+    end
+  rescue Stripe::StripeError => e
+    status 402
+    return log_info("Error retrieving collected data from selected reader! #{e.message}")
+  end
+end
+
+# Convenience endpoint that uses the selected terminal reader from session for canceling collect inputs
+post '/api/terminal/cancel_collect_inputs' do
+  validationError = validateApiKey
+  if !validationError.nil?
+    status 400
+    return log_info(validationError)
+  end
+
+  # Get selected reader from session
+  reader_id = session[:selected_reader_id]
+  if reader_id.nil?
+    status 400
+    return { error: 'No terminal reader selected. Please select a reader first.' }.to_json
+  end
+
+  begin
+    # Cancel the current action on the selected reader
+    cancel_result = Stripe::Terminal::Reader.cancel_action(reader_id)
+    
+    log_info("Collect inputs canceled on selected reader: #{reader_id}")
+    status 200
+    return cancel_result.to_json
+    
+  rescue Stripe::StripeError => e
+    status 402
+    return log_info("Error canceling collect inputs on selected reader! #{e.message}")
+  end
 end
 
 

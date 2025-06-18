@@ -9,6 +9,7 @@ import {
   useElements,
   CustomCheckoutProvider
 } from "@stripe/react-stripe-js";
+import TerminalStatusBar from './components/TerminalStatusBar';
 import './stripe-theme.css';
 
 export default function Links(props) {
@@ -61,6 +62,9 @@ export default function Links(props) {
               Stripe Terminal Demo
             </div>
             <nav className="stripe-nav">
+              <Link to="/terminal" className="stripe-nav-link">
+                Terminal
+              </Link>
               <Link to="/customers" className="stripe-nav-link">
                 Customers
               </Link>
@@ -74,6 +78,8 @@ export default function Links(props) {
           </div>
         </div>
       </header>
+
+      <TerminalStatusBar showFullStatus={false} />
 
       {/* Main Content */}
       <main className="stripe-main">

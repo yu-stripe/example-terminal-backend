@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { API_URL } from './index.js'
 import { useNavigate } from "react-router-dom";
+import TerminalStatusBar from './components/TerminalStatusBar';
 import './stripe-theme.css';
 
 export default function Customers() {
@@ -33,6 +34,9 @@ export default function Customers() {
               Stripe Terminal Demo
             </div>
             <nav className="stripe-nav">
+              <Link to="/terminal" className="stripe-nav-link">
+                Terminal
+              </Link>
               <Link to="/customers" className="stripe-nav-link active">
                 Customers
               </Link>
@@ -46,6 +50,8 @@ export default function Customers() {
           </div>
         </div>
       </header>
+
+      <TerminalStatusBar showFullStatus={false} />
 
       {/* Main Content */}
       <main className="stripe-main">
