@@ -1,15 +1,22 @@
 import React, { useState, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { useTerminal } from './context/TerminalContext';
 import { API_URL } from './index.js';
+import TerminalStatusBar from './components/TerminalStatusBar';
 import './stripe-theme.css';
 
 const TerminalSelector = ({ onTerminalSelected }) => {
+  const navigate = useNavigate();
   const [readers, setReaders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [isSelecting, setIsSelecting] = useState(false);
   
   const { selectedTerminal, selectTerminal, clearTerminal } = useTerminal();
+
+  const goHome = () => {
+    navigate('/');
+  };
 
   useEffect(() => {
     fetchReaders();
@@ -90,158 +97,285 @@ const TerminalSelector = ({ onTerminalSelected }) => {
     return typeMap[deviceType] || deviceType;
   };
 
+  const renderHeader = () => (
+    <>
+      {/* Header */}
+      <header className="stripe-header">
+        <div className="stripe-container">
+          <div className="stripe-header-content">
+            <div className="stripe-logo" onClick={goHome}>
+              Stripe Terminal Demo
+            </div>
+            <nav className="stripe-nav">
+              <Link to="/terminal" className="stripe-nav-link active">
+                Terminal
+              </Link>
+              <Link to="/customers" className="stripe-nav-link">
+                Customers
+              </Link>
+              <Link to="/links" className="stripe-nav-link">
+                Links
+              </Link>
+              <Link to="/custom-checkout" className="stripe-nav-link">
+                Checkout
+              </Link>
+            </nav>
+          </div>
+        </div>
+      </header>
+
+      <TerminalStatusBar showClearButton={true} />
+    </>
+  );
+
   if (loading) {
     return (
-      <div className="terminal-selector-container">
-        <div className="loading">
-          <div className="spinner"></div>
-          <p>Loading terminal readers...</p>
-        </div>
-      </div>
+      <>
+        {renderHeader()}
+        <main className="stripe-main">
+          <div className="stripe-container">
+            <div className="stripe-loading">Loading terminal readers...</div>
+          </div>
+        </main>
+      </>
     );
   }
 
   if (error) {
     return (
-      <div className="terminal-selector-container">
-        <div className="error">
-          <h3>Error</h3>
-          <p>{error}</p>
-          <button onClick={fetchReaders} className="retry-btn">
-            Retry
-          </button>
-        </div>
-      </div>
+      <>
+        {renderHeader()}
+        <main className="stripe-main">
+          <div className="stripe-container">
+            <div className="stripe-alert stripe-alert-error">
+              <h3>Error</h3>
+              <p>{error}</p>
+              <button onClick={fetchReaders} className="stripe-button stripe-button-secondary">
+                Retry
+              </button>
+            </div>
+          </div>
+        </main>
+      </>
     );
   }
 
   return (
-    <div className="terminal-selector-container">
-      <div className="terminal-selector-header">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div>
-            <h2>Select Terminal Reader</h2>
-            <p>Choose a terminal reader to process payments</p>
+    <>
+      {renderHeader()}
+      <main style={{ padding: '0 20px 20px 20px' }}>
+        <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
+
+          
+          {/* Page Title */}
+          <div style={{ marginBottom: '30px', marginTop: '20px' }}>
+            <h1 style={{ fontSize: '24px', marginBottom: '10px', marginTop: '0' }}>Terminal Selection</h1>
+            <p style={{ color: '#666', margin: '0' }}>
+              Choose a terminal reader to process payments
+            </p>
           </div>
+
+          {/* Current Selection Status */}
           {selectedTerminal && (
-            <button
-              onClick={handleClearSelection}
-              disabled={isSelecting}
-              className="clear-btn"
-              style={{
-                backgroundColor: '#dc3545',
-                color: 'white',
-                border: 'none',
-                padding: '8px 16px',
-                borderRadius: '4px',
-                cursor: 'pointer',
-                fontSize: '14px'
-              }}
-            >
-              {isSelecting ? 'Clearing...' : 'Clear Selection'}
-            </button>
-          )}
-        </div>
-        {selectedTerminal && (
-          <div style={{
-            backgroundColor: '#d4edda',
-            color: '#155724',
-            padding: '8px 12px',
-            borderRadius: '4px',
-            marginTop: '12px',
-            fontSize: '14px'
-          }}>
-            ✓ Currently selected: {selectedTerminal}
-          </div>
-        )}
-      </div>
-
-      {readers.length === 0 ? (
-        <div className="no-readers">
-          <p>No terminal readers available</p>
-          <button onClick={fetchReaders} className="refresh-btn">
-            Refresh
-          </button>
-        </div>
-      ) : (
-        <div className="readers-grid">
-          {readers.map((reader) => (
-            <div
-              key={reader.id}
-              className={`reader-card ${selectedTerminal === reader.id ? 'selected' : ''} ${
-                reader.status === 'offline' ? 'offline' : ''
-              }`}
-            >
-              <div className="reader-header">
-                <div className="reader-info">
-                  <h3>{reader.label || reader.id}</h3>
-                  <p className="device-type">
-                    {getDeviceTypeDisplayName(reader.device_type)}
-                  </p>
-                </div>
-                <div className="reader-status">
-                  <span
-                    className="status-indicator"
-                    style={{ backgroundColor: getStatusColor(reader.status) }}
-                  ></span>
-                  <span className="status-text">{reader.status}</span>
-                </div>
-              </div>
-
-              <div className="reader-details">
-                <div className="detail-item">
-                  <span className="detail-label">ID:</span>
-                  <span className="detail-value">{reader.id}</span>
-                </div>
-                {reader.serial_number && (
-                  <div className="detail-item">
-                    <span className="detail-label">Serial:</span>
-                    <span className="detail-value">{reader.serial_number}</span>
-                  </div>
-                )}
-                {reader.ip_address && reader.ip_address !== '0.0.0.0' && (
-                  <div className="detail-item">
-                    <span className="detail-label">IP:</span>
-                    <span className="detail-value">{reader.ip_address}</span>
-                  </div>
-                )}
-                {reader.last_seen_at && (
-                  <div className="detail-item">
-                    <span className="detail-label">Last Seen:</span>
-                    <span className="detail-value">
-                      {new Date(reader.last_seen_at * 1000).toLocaleString()}
-                    </span>
-                  </div>
-                )}
-              </div>
-
-              <div className="reader-actions">
-                {selectedTerminal === reader.id ? (
-                  <div className="selected-indicator">
-                    <span className="checkmark">✓</span>
-                    Selected
-                  </div>
-                ) : (
-                  <button
-                    onClick={() => handleSelectReader(reader.id)}
-                    disabled={isSelecting || reader.status === 'offline'}
-                    className="select-btn"
-                  >
-                    {isSelecting ? 'Selecting...' : 'Select'}
-                  </button>
-                )}
+            <div style={{ 
+              background: '#d4edda', 
+              color: '#155724', 
+              padding: '15px', 
+              marginBottom: '30px', 
+              borderRadius: '4px',
+              border: '1px solid #c3e6cb'
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span>✓ Currently selected: {selectedTerminal}</span>
+                <button
+                  onClick={handleClearSelection}
+                  disabled={isSelecting}
+                  style={{
+                    background: '#6c757d',
+                    color: 'white',
+                    border: 'none',
+                    padding: '8px 16px',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                    fontSize: '14px'
+                  }}
+                >
+                  {isSelecting ? 'Clearing...' : 'Clear Selection'}
+                </button>
               </div>
             </div>
-          ))}
-        </div>
-      )}
+          )}
 
-      <div className="terminal-selector-footer">
-        <button onClick={fetchReaders} className="refresh-btn">
-          Refresh List
-        </button>
-      </div>
-    </div>
+          {/* Terminal Readers */}
+          {readers.length === 0 ? (
+            <div style={{ 
+              background: '#fff3cd', 
+              color: '#856404', 
+              padding: '15px', 
+              borderRadius: '4px',
+              border: '1px solid #ffeaa7'
+            }}>
+              <p>No terminal readers available</p>
+              <button 
+                onClick={fetchReaders}
+                style={{
+                  background: '#6c757d',
+                  color: 'white',
+                  border: 'none',
+                  padding: '8px 16px',
+                  borderRadius: '4px',
+                  cursor: 'pointer'
+                }}
+              >
+                Refresh List
+              </button>
+            </div>
+          ) : (
+            <>
+              <div style={{ 
+                display: 'grid', 
+                gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', 
+                gap: '20px', 
+                marginBottom: '30px' 
+              }}>
+                {readers.map((reader) => (
+                  <div
+                    key={reader.id}
+                    style={{
+                      border: selectedTerminal === reader.id ? '2px solid #28a745' : '1px solid #ddd',
+                      borderRadius: '8px',
+                      padding: '20px',
+                      background: 'white',
+                      cursor: reader.status === 'online' && !isSelecting ? 'pointer' : 'default',
+                      opacity: reader.status === 'offline' ? 0.6 : 1
+                    }}
+                    onClick={() => 
+                      reader.status === 'online' && !isSelecting 
+                        ? handleSelectReader(reader.id) 
+                        : null
+                    }
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+                      <h3 style={{ margin: 0, fontSize: '18px' }}>
+                        {getDeviceTypeDisplayName(reader.device_type)}
+                      </h3>
+                      <span style={{
+                        background: reader.status === 'online' ? '#28a745' : '#dc3545',
+                        color: 'white',
+                        padding: '4px 8px',
+                        borderRadius: '4px',
+                        fontSize: '12px'
+                      }}>
+                        {reader.status}
+                      </span>
+                    </div>
+                    
+                    <div style={{ marginBottom: '15px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                        <span style={{ fontWeight: '500' }}>ID:</span>
+                        <span style={{ fontFamily: 'monospace', fontSize: '14px' }}>
+                          {reader.id}
+                        </span>
+                      </div>
+                      
+                      {reader.serial_number && (
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                          <span style={{ fontWeight: '500' }}>Serial:</span>
+                          <span style={{ fontFamily: 'monospace', fontSize: '14px' }}>
+                            {reader.serial_number}
+                          </span>
+                        </div>
+                      )}
+                      
+                      {reader.ip_address && reader.ip_address !== '0.0.0.0' && (
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                          <span style={{ fontWeight: '500' }}>IP:</span>
+                          <span style={{ fontFamily: 'monospace', fontSize: '14px' }}>
+                            {reader.ip_address}
+                          </span>
+                        </div>
+                      )}
+                      
+                      {reader.last_seen_at && (
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                          <span style={{ fontWeight: '500' }}>Last Seen:</span>
+                          <span style={{ fontSize: '14px' }}>
+                            {new Date(reader.last_seen_at).toLocaleString()}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+
+                    <div>
+                      {selectedTerminal === reader.id ? (
+                        <div style={{
+                          background: '#28a745',
+                          color: 'white',
+                          padding: '10px',
+                          borderRadius: '4px',
+                          textAlign: 'center',
+                          fontWeight: '500'
+                        }}>
+                          ✓ Selected
+                        </div>
+                      ) : (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleSelectReader(reader.id);
+                          }}
+                          disabled={isSelecting || reader.status === 'offline'}
+                          style={{
+                            background: reader.status === 'offline' ? '#6c757d' : '#007bff',
+                            color: 'white',
+                            border: 'none',
+                            padding: '10px',
+                            borderRadius: '4px',
+                            cursor: reader.status === 'offline' ? 'not-allowed' : 'pointer',
+                            width: '100%',
+                            fontWeight: '500'
+                          }}
+                        >
+                          {isSelecting ? 'Selecting...' : reader.status === 'offline' ? 'Offline' : 'Select'}
+                        </button>
+                      )}
+                    </div>
+
+                    {reader.status === 'offline' && (
+                      <div style={{ marginTop: '10px', textAlign: 'center', color: '#6c757d', fontSize: '14px' }}>
+                        Terminal Offline
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              <div style={{ textAlign: 'center' }}>
+                <button 
+                  onClick={fetchReaders}
+                  style={{
+                    background: '#6c757d',
+                    color: 'white',
+                    border: 'none',
+                    padding: '10px 20px',
+                    borderRadius: '4px',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Refresh List
+                </button>
+              </div>
+            </>
+          )}
+
+          {isSelecting && (
+            <div style={{ textAlign: 'center', marginTop: '20px', color: '#666' }}>
+              {selectedTerminal ? 'Clearing selection...' : 'Selecting terminal...'}
+            </div>
+          )}
+        </div>
+      </main>
+    </>
   );
 };
 
