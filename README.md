@@ -68,3 +68,58 @@ Next, navigate to one of our example apps. Follow the instructions in the README
 
 ⚠️ **Note that this backend is intended for example purposes only**. Because endpoints are not authenticated, you should not use this backend in production.
 
+## Development
+
+```bash
+# Backend
+ruby web.rb
+
+# Frontend
+cd client
+npm start
+```
+
+## Production Deployment
+
+### Environment Variables
+
+For production deployment, set the following environment variable:
+
+```
+REACT_APP_BACKEND_URL=https://your-backend-domain.com
+```
+
+### Build Configuration
+
+The application automatically detects the environment:
+- **Development**: API requests go to `http://localhost:4567`
+- **Production**: API requests go to the URL specified in `REACT_APP_BACKEND_URL` environment variable, or fallback to the hardcoded production URL
+
+### Current Production URLs
+
+- Frontend: `https://example-terminal-backend-1.onrender.com`
+- Backend: `https://example-terminal-backend-l8i6.onrender.com`
+
+Make sure to update the hardcoded fallback URL in `client/src/index.js` if your backend URL changes.
+
+## API Endpoints
+
+### Terminal Management
+- `GET /api/terminal/readers` - Get available terminal readers
+- `GET /api/terminal/selected` - Get currently selected terminal
+- `POST /api/terminal/select` - Select a terminal reader
+- `POST /api/terminal/clear` - Clear terminal selection
+
+### Terminal Operations
+- `POST /api/terminal/collect_email` - Collect email using selected terminal
+- `GET /api/terminal/collected_data` - Get collected data from terminal
+- `POST /api/terminal/cancel_collect_inputs` - Cancel input collection
+
+## Features
+
+- Terminal reader selection with persistent state
+- Client-side state management using React Context
+- Terminal status display with clear functionality
+- Email collection from terminal readers
+- Payment processing integration
+

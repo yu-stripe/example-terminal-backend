@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useTerminal } from './context/TerminalContext';
+import { API_URL } from './index.js';
 import './stripe-theme.css';
 
 const TerminalSelector = ({ onTerminalSelected }) => {
@@ -16,7 +17,7 @@ const TerminalSelector = ({ onTerminalSelected }) => {
 
   const fetchReaders = async () => {
     try {
-      const response = await fetch('/api/terminal/readers');
+      const response = await fetch(`${API_URL}/api/terminal/readers`);
       if (!response.ok) {
         throw new Error('Failed to fetch terminal readers');
       }
