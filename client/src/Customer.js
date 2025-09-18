@@ -86,7 +86,7 @@ export default function Customer(prop) {
   const pollForCollectedEmail = () => {
     const pollInterval = setInterval(() => {
       // Use the new convenience endpoint that uses selected terminal from session
-      fetch(`${API_URL}/api/terminal/collected_data`)
+      fetch(`${API_URL}/api/terminal/${selectedTerminal}/collected_data`)
         .then(async(r) => {
           if (r.ok) {
             const data = await r.json();
