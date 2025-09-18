@@ -49,7 +49,7 @@ export default function Customer(prop) {
     setCollectedEmail('');
     
     // Use the new convenience endpoint that uses selected terminal from session
-    fetch(`${API_URL}/api/terminal/collect_email`, {
+    fetch(`${API_URL}/api/terminal/${selectedTerminal}/collect_email`, {
       method: "POST",
       headers: {
         'Content-Type': 'application/json',
