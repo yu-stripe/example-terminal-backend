@@ -49,21 +49,23 @@ export default function Customer(prop) {
     setCollectedEmail('');
     
     // Use the new convenience endpoint that uses selected terminal from session
-    fetch(`${API_URL}/api/terminal/${selectedTerminal}/collect_email`, {
-      method: "POST",
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        customer_id: id
-      })
-    }).then(async(r) => {
+    try {
+      const r = await fetch(`${API_URL}/api/terminal/${selectedTerminal}/collect_email`, {
+        method: "POST",
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          customer_id: id
+        })
+      });
+
       if (r.ok) {
         setEmailCollectionStatus('waiting');
         // Poll for collected data
         pollForCollectedEmail();
       } else {
-        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        const errorData = await r.json().catch(() => ({ error: 'Unknown error' }));
         setEmailCollectionStatus('error');
         console.error('Failed to initiate email collection:', errorData.error);
         if (errorData.error && errorData.error.includes('No terminal reader selected')) {
