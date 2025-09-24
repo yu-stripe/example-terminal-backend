@@ -233,16 +233,14 @@ export default function Customer(prop) {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({amount: amount * 100, customer: id, currency: 'jpy' })
+        body: JSON.stringify({amount: amount, customer: id, currency: 'jpy' })
       });
 
       if (response.ok) {
         console.log('Payment intent created successfully');
-        alert('Payment intent created successfully');
       } else {
         const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
         console.error('Failed to create payment intent:', errorData.error);
-        alert(`Error: ${errorData.error || 'Failed to create payment intent'}`);
       }
     } catch (error) {
       console.error('Error creating payment intent:', error);
@@ -292,7 +290,7 @@ export default function Customer(prop) {
   let createPaymentIntentQR = () => {
     fetch(`${API_URL}/api/customers/${id}/payment_intent`, {
       method: "POST",
-      body: JSON.stringify({amount: amount * 100 })
+      body: JSON.stringify({amount: amount })
     }).then(async(r) => {
       const pi = await r.json();
       setPiCust(`${pi.id},${id}`)
@@ -302,7 +300,7 @@ export default function Customer(prop) {
   let createPaymentIntent = () => {
     fetch(`${API_URL}/api/customers/${id}/payment_intent`, {
       method: "POST",
-      body: JSON.stringify({amount: amount * 100 })
+      body: JSON.stringify({amount: amount })
     }).then(async(r) => {
       const pi = await r.json();
       setPi(`${pi.id}`)
@@ -487,7 +485,7 @@ export default function Customer(prop) {
                     </div>
                     <div className="stripe-flex stripe-items-center stripe-gap-3">
                       <span className="stripe-text" style={{ fontWeight: '500' }}>
-                        ${(pi.amount/100).toFixed(2)} {pi.currency.toUpperCase()}
+                        ${(pi.amount).toFixed(2)} {pi.currency.toUpperCase()}
                       </span>
                       <div className={`stripe-badge ${getStatusBadge(pi.status)}`}>
                         {pi.status}
