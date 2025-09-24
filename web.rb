@@ -136,7 +136,7 @@ post '/create_payment_intent' do
       :payment_method_types => params[:payment_method_types] || ['card_present'],
       :capture_method => params[:capture_method] || 'manual',
       :amount => params[:amount],
-      :currency => params[:currency] || 'usd',
+      :currency => params[:currency] || 'jpy',
       :description => params[:description] || 'Example PaymentIntent',
       :payment_method_options => params[:payment_method_options] || [],
       :receipt_email => params[:receipt_email],
@@ -369,7 +369,7 @@ post '/api/customers/:id/payment_intent' do
 
   payment_intent = Stripe::PaymentIntent.create(
     amount: amount,
-    currency: 'usd',
+    currency: 'jpy',
     customer: params[:id],
   )
 
@@ -383,7 +383,7 @@ end
 post '/api/customers/:id/payment_intent/:pm' do
   payment_intent = Stripe::PaymentIntent.create(
     amount: 1000,
-    currency: 'usd',
+    currency: 'jpy',
     customer: params[:id],
     payment_method: params[:pm],
     #confirm: params[:confirm] || false
@@ -566,7 +566,7 @@ post '/api/terminal/:id/payment_intent' do
   amount = req['amount']
 
   intent = Stripe::PaymentIntent.create({
-    currency: 'usd',
+    currency: 'jpy',
     customer: customer,
     payment_method_types: ['card_present'],
     amount: amount,

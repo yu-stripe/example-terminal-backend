@@ -589,13 +589,13 @@ export default function Customer(prop) {
               <form onSubmit={collect} className="stripe-flex stripe-flex-col stripe-gap-4">
                 <div>
                   <label className="stripe-text" style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
-                    請求金額 (Amount USD)
+                    請求金額 (Amount JPY)
                   </label>
                   <input
                     value={amount}
                     onChange={(event) => { setAmount(event.target.value)}}
                     type="number"
-                    placeholder="USD"
+                    placeholder="JPY"
                     style={{
                       width: '100%',
                       padding: '12px',
@@ -637,13 +637,13 @@ export default function Customer(prop) {
                 
                 <div>
                   <label className="stripe-text" style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
-                    請求金額 (Amount USD)
+                    請求金額 (Amount JPY)
                   </label>
                   <input
                     value={amount}
                     onChange={(event) => { setAmount(event.target.value)}}
                     type="number"
-                    placeholder="USD"
+                    placeholder="JPY"
                     style={{
                       width: '100%',
                       padding: '12px',
@@ -680,13 +680,13 @@ export default function Customer(prop) {
                 
                 <div>
                   <label className="stripe-text" style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
-                    請求金額 (Amount USD)
+                    請求金額 (Amount JPY)
                   </label>
                   <input
                     value={amount}
                     onChange={(event) => { setAmount(event.target.value)}}
                     type="number"
-                    placeholder="USD"
+                    placeholder="JPY"
                     style={{
                       width: '100%',
                       padding: '12px',
