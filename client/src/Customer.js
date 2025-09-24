@@ -39,7 +39,7 @@ export default function Customer(prop) {
     });
   }
 
-  const collectEmail = () => {
+  const collectEmail = async () => {
     if (!selectedTerminal) {
       alert('Terminal not selected. Please select a terminal first.');
       return;
@@ -63,17 +63,20 @@ export default function Customer(prop) {
         // Poll for collected data
         pollForCollectedEmail();
       } else {
-        const errorData = await r.json().catch(() => ({ error: 'Unknown error' }));
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
         setEmailCollectionStatus('error');
         console.error('Failed to initiate email collection:', errorData.error);
         if (errorData.error && errorData.error.includes('No terminal reader selected')) {
           alert('No terminal reader selected. Please select a terminal first from the Terminal page.');
+        } else {
+          alert(`Error: ${errorData.error || 'Failed to start email collection'}`);
         }
       }
-    }).catch(error => {
+    } catch (error) {
       setEmailCollectionStatus('error');
       console.error('Error collecting email:', error);
-    });
+      alert(`Error: ${error.message}`);
+    }
   }
 
   const refreshCustomerData = () => {
@@ -126,29 +129,47 @@ export default function Customer(prop) {
     }, 60000);
   }
 
-  const cancelEmailCollection = () => {
+  const cancelEmailCollection = async () => {
     if (!selectedTerminal) {
       alert('Terminal not selected. Please select a terminal first.');
       return;
     }
 
-    // Use the new convenience endpoint that uses selected terminal from session
-    fetch(`${API_URL}/api/terminal/cancel_collect_inputs`, {
-      method: "POST",
-    }).then(async(r) => {
-      if (r.ok) {
+    try {
+      // First, ensure the server session has the correct terminal selected
+      const syncResponse = await fetch(`${API_URL}/api/terminal/select`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ reader_id: selectedTerminal }),
+      });
+
+      if (!syncResponse.ok) {
+        throw new Error('Failed to sync terminal selection with server');
+      }
+
+      // Now proceed with canceling email collection
+      const response = await fetch(`${API_URL}/api/terminal/cancel_collect_inputs`, {
+        method: "POST",
+      });
+
+      if (response.ok) {
         setEmailCollectionStatus('cancelled');
         setCollectedEmail('');
       } else {
-        const errorData = await r.json().catch(() => ({ error: 'Unknown error' }));
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
         console.error('Error canceling email collection:', errorData.error);
         if (errorData.error && errorData.error.includes('No terminal reader selected')) {
           alert('No terminal reader selected. Please select a terminal first from the Terminal page.');
+        } else {
+          alert(`Error: ${errorData.error || 'Failed to cancel email collection'}`);
         }
       }
-    }).catch(error => {
+    } catch (error) {
       console.error('Error canceling email collection:', error);
-    });
+      alert(`Error: ${error.message}`);
+    }
   }
 
   useEffect(() => {
@@ -170,53 +191,91 @@ export default function Customer(prop) {
     });
   }
 
-  let collect = (e) => {
+  let collect = async (e) => {
     e.preventDefault();
     if (!selectedTerminal) {
       alert('Terminal not selected. Please select a terminal first.');
       return;
     }
 
-    fetch(`${API_URL}/api/terminal/${selectedTerminal}/payment_intent`, {
-      method: "POST",
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({amount: amount * 100, customer: id, currency: 'jpy' })
-    }).then(async(r) => {
-      if (r.ok) {
+    try {
+      // First, ensure the server session has the correct terminal selected
+      const syncResponse = await fetch(`${API_URL}/api/terminal/select`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ reader_id: selectedTerminal }),
+      });
+
+      if (!syncResponse.ok) {
+        throw new Error('Failed to sync terminal selection with server');
+      }
+
+      // Now proceed with payment intent creation
+      const response = await fetch(`${API_URL}/api/terminal/${selectedTerminal}/payment_intent`, {
+        method: "POST",
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({amount: amount, customer: id, currency: 'jpy' })
+      });
+
+      if (response.ok) {
         console.log('Payment intent created successfully');
       } else {
-        console.error('Failed to create payment intent');
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        console.error('Failed to create payment intent:', errorData.error);
       }
-    }).catch(error => {
+    } catch (error) {
       console.error('Error creating payment intent:', error);
-    });
+      alert(`Error: ${error.message}`);
+    }
   }
 
-  let cannel = () => {
+  let cannel = async () => {
     if (!selectedTerminal) {
       alert('Terminal not selected. Please select a terminal first.');
       return;
     }
 
-    fetch(`${API_URL}/api/terminal/${selectedTerminal}/cannel`, {
-      method: "POST",
-    }).then(async(r) => {
-      if (r.ok) {
-        console.log('Action cancelled successfully');
-      } else {
-        console.error('Failed to cancel action');
+    try {
+      // First, ensure the server session has the correct terminal selected
+      const syncResponse = await fetch(`${API_URL}/api/terminal/select`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ reader_id: selectedTerminal }),
+      });
+
+      if (!syncResponse.ok) {
+        throw new Error('Failed to sync terminal selection with server');
       }
-    }).catch(error => {
+
+      // Now proceed with canceling action
+      const response = await fetch(`${API_URL}/api/terminal/${selectedTerminal}/cannel`, {
+        method: "POST",
+      });
+
+      if (response.ok) {
+        console.log('Action cancelled successfully');
+        alert('Action cancelled successfully');
+      } else {
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        console.error('Failed to cancel action:', errorData.error);
+        alert(`Error: ${errorData.error || 'Failed to cancel action'}`);
+      }
+    } catch (error) {
       console.error('Error cancelling action:', error);
-    });
+      alert(`Error: ${error.message}`);
+    }
   }
 
   let createPaymentIntentQR = () => {
     fetch(`${API_URL}/api/customers/${id}/payment_intent`, {
       method: "POST",
-      body: JSON.stringify({amount: amount * 100 })
+      body: JSON.stringify({amount: amount })
     }).then(async(r) => {
       const pi = await r.json();
       setPiCust(`${pi.id},${id}`)
@@ -226,7 +285,7 @@ export default function Customer(prop) {
   let createPaymentIntent = () => {
     fetch(`${API_URL}/api/customers/${id}/payment_intent`, {
       method: "POST",
-      body: JSON.stringify({amount: amount * 100 })
+      body: JSON.stringify({amount: amount })
     }).then(async(r) => {
       const pi = await r.json();
       setPi(`${pi.id}`)
@@ -411,7 +470,7 @@ export default function Customer(prop) {
                     </div>
                     <div className="stripe-flex stripe-items-center stripe-gap-3">
                       <span className="stripe-text" style={{ fontWeight: '500' }}>
-                        ${(pi.amount/100).toFixed(2)} {pi.currency.toUpperCase()}
+                        ${(pi.amount).toFixed(2)} {pi.currency.toUpperCase()}
                       </span>
                       <div className={`stripe-badge ${getStatusBadge(pi.status)}`}>
                         {pi.status}
@@ -513,13 +572,13 @@ export default function Customer(prop) {
               <form onSubmit={collect} className="stripe-flex stripe-flex-col stripe-gap-4">
                 <div>
                   <label className="stripe-text" style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
-                    請求金額 (Amount USD)
+                    請求金額 (Amount JPY)
                   </label>
                   <input
                     value={amount}
                     onChange={(event) => { setAmount(event.target.value)}}
                     type="number"
-                    placeholder="USD"
+                    placeholder="JPY"
                     style={{
                       width: '100%',
                       padding: '12px',
@@ -561,13 +620,13 @@ export default function Customer(prop) {
                 
                 <div>
                   <label className="stripe-text" style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
-                    請求金額 (Amount USD)
+                    請求金額 (Amount JPY)
                   </label>
                   <input
                     value={amount}
                     onChange={(event) => { setAmount(event.target.value)}}
                     type="number"
-                    placeholder="USD"
+                    placeholder="JPY"
                     style={{
                       width: '100%',
                       padding: '12px',
@@ -604,13 +663,13 @@ export default function Customer(prop) {
                 
                 <div>
                   <label className="stripe-text" style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
-                    請求金額 (Amount USD)
+                    請求金額 (Amount JPY)
                   </label>
                   <input
                     value={amount}
                     onChange={(event) => { setAmount(event.target.value)}}
                     type="number"
-                    placeholder="USD"
+                    placeholder="JPY"
                     style={{
                       width: '100%',
                       padding: '12px',
