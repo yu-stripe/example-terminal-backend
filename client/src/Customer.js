@@ -48,32 +48,17 @@ export default function Customer(prop) {
     setEmailCollectionStatus('collecting');
     setCollectedEmail('');
     
-    try {
-      // First, ensure the server session has the correct terminal selected
-      const syncResponse = await fetch(`${API_URL}/api/terminal/select`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ reader_id: selectedTerminal }),
-      });
-
-      if (!syncResponse.ok) {
-        throw new Error('Failed to sync terminal selection with server');
-      }
-
-      // Now proceed with email collection using the convenience endpoint
-      const response = await fetch(`${API_URL}/api/terminal/collect_email`, {
-        method: "POST",
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          customer_id: id
-        })
-      });
-
-      if (response.ok) {
+    // Use the new convenience endpoint that uses selected terminal from session
+    fetch(`${API_URL}/api/terminal/${selectedTerminal}/collect_email`, {
+      method: "POST",
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        customer_id: id
+      })
+    }).then(async(r) => {
+      if (r.ok) {
         setEmailCollectionStatus('waiting');
         // Poll for collected data
         pollForCollectedEmail();
@@ -104,7 +89,7 @@ export default function Customer(prop) {
   const pollForCollectedEmail = () => {
     const pollInterval = setInterval(() => {
       // Use the new convenience endpoint that uses selected terminal from session
-      fetch(`${API_URL}/api/terminal/collected_data`)
+      fetch(`${API_URL}/api/terminal/${selectedTerminal}/collected_data`)
         .then(async(r) => {
           if (r.ok) {
             const data = await r.json();
