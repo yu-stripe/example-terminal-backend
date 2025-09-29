@@ -14,6 +14,23 @@ configure do
   enable :cross_origin
 end
 
+def get_customer_brand(customer_id)
+  return nil if customer_id.nil? || customer_id.to_s.empty?
+  begin
+    customer = Stripe::Customer.retrieve(customer_id)
+    meta = customer.respond_to?(:metadata) ? customer.metadata : nil
+    brand_value = nil
+    if meta
+      # Stripe metadata behaves like a hash with string keys
+      brand_value = meta['brand'] || (meta[:brand] rescue nil)
+    end
+    return (brand_value && !brand_value.to_s.empty?) ? brand_value : nil
+  rescue Stripe::StripeError => e
+    log_info("Failed to fetch customer brand: #{e.message}")
+    return nil
+  end
+end
+
 before do
   response.headers['Access-Control-Allow-Origin'] = '*'
 end
@@ -364,7 +381,7 @@ get '/api/customers/:id' do
   return customer.to_json
 end
 
-def generate_random_camera_metadata
+def generate_random_camera_metadata(preferred_brand = nil)
   areas = ["Tokyo", "Osaka", "Yokohama", "Nagoya", "Sapporo", "Fukuoka"]
   floors = ["B1F", "1F", "2F", "3F", "4F", "5F"]
 
@@ -410,7 +427,7 @@ def generate_random_camera_metadata
     "Anker Battery Pack", "Kenko UV Filter 67mm"
   ]
 
-  brand = brands.sample
+  brand = preferred_brand || brands.sample
   category = category_options.keys.sample
   sub_category = category_options[category].sample
   sku = "SKU-#{SecureRandom.hex(2).upcase}-#{SecureRandom.hex(2).upcase}"
@@ -421,9 +438,17 @@ def generate_random_camera_metadata
     when "Lens"
       (lenses_by_brand[brand] || ["50mm F1.8"]).sample
     when "Film"
-      film = film_names.sample
-      brand = film.split.first
-      film
+      if preferred_brand
+        films_for_brand = film_names.select { |f| f.start_with?("#{brand} ") }
+        film = (films_for_brand.sample || film_names.sample)
+        # If we had to fallback to a different brand, update brand accordingly
+        brand = film.split.first
+        film
+      else
+        film = film_names.sample
+        brand = film.split.first
+        film
+      end
     when "Accessory"
       accessories.sample
     else
@@ -490,7 +515,8 @@ end
 post '/api/customers/:id/payment_intent' do
   req = JSON.parse(request.body.read)
   amount = req['amount']
-  metadata = generate_random_camera_metadata
+  brand_override = get_customer_brand(params[:id])
+  metadata = generate_random_camera_metadata(brand_override)
   description_str = build_purchase_description(metadata)
 
   payment_intent = Stripe::PaymentIntent.create(
@@ -694,7 +720,8 @@ post '/api/terminal/:id/payment_intent' do
   customer = req['customer']
   amount = req['amount']
 
-  metadata = generate_random_camera_metadata
+  brand_override = get_customer_brand(customer)
+  metadata = generate_random_camera_metadata(brand_override)
   description_str = build_purchase_description(metadata)
 
   intent = Stripe::PaymentIntent.create({
