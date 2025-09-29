@@ -213,6 +213,36 @@ export default function Customer(prop) {
     });
   }
 
+  const refundPaymentIntent = async (piId) => {
+    if (!selectedTerminal) {
+      alert('Terminal not selected. Please select a terminal first.');
+      return;
+    }
+
+    try {
+      const body = { payment_intent: piId };
+
+      const res = await fetch(`${API_URL}/api/terminal/${selectedTerminal}/refund_payment`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: 'Unknown error' }));
+        console.error('Refund failed', err);
+        return;
+      }
+
+      // Refresh list after a short delay to reflect refund status
+      setTimeout(() => {
+        getPaymentIntents();
+      }, 2000);
+    } catch (e) {
+      console.error('Refund error', e);
+    }
+  }
+
   let collect = async (e) => {
     e.preventDefault();
     if (!selectedTerminal) {
@@ -517,8 +547,19 @@ export default function Customer(prop) {
                         <span className="stripe-text" style={{ fontWeight: '600', whiteSpace: 'nowrap' }}>
                           {pi?.currency?.toLowerCase() === 'jpy' ? `¥${Number(pi.amount).toLocaleString('ja-JP')}` : `$${pi.amount}`} {pi.currency.toUpperCase()}
                         </span>
-                        <div className={`stripe-badge ${getStatusBadge(pi.status)}`}>
-                          {pi.status}
+                        <div className="stripe-flex stripe-items-center" style={{ gap: '8px' }}>
+                          <div className={`stripe-badge ${getStatusBadge(pi.status)}`}>
+                            {pi.status}
+                          </div>
+                          {pi.status === 'succeeded' && (
+                            <button
+                              className="stripe-button stripe-button-secondary"
+                              style={{ fontSize: '12px', padding: '4px 8px' }}
+                              onClick={() => refundPaymentIntent(pi.id)}
+                            >
+                              Refund
+                            </button>
+                          )}
                         </div>
                       </div>
 
@@ -532,7 +573,14 @@ export default function Customer(prop) {
                         </span>
                       </div>
 
-                      {/* 3行目(任意): タグ */}
+                    {/* 3行目: 説明 */}
+                    {pi.description && (
+                      <div className="stripe-text stripe-text-sm" style={{ marginTop: '2px', color: 'var(--stripe-gray-600)' }}>
+                        {pi.description}
+                      </div>
+                    )}
+
+                    {/* 4行目(任意): タグ */}
                       {pi.metadata && Object.keys(pi.metadata).length > 0 && (
                         <div className="stripe-flex stripe-flex-wrap" style={{ marginTop: '2px', gap: '4px' }}>
                           {Object.entries(pi.metadata)
