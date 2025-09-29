@@ -18,6 +18,7 @@ export default function Customer(prop) {
   const [checkoutUrl, setCheckoutUrl] = useState('');
   const [candidates, setCandidates] = useState([]);
   const [candidatesStatus, setCandidatesStatus] = useState('');
+  const [migratingTo, setMigratingTo] = useState(null);
 
   const [amount, setAmount] = useState(0);
   const [collectedEmail, setCollectedEmail] = useState('');
@@ -84,6 +85,33 @@ export default function Customer(prop) {
     };
     fetchCandidates();
   }, [customer]);
+
+  const migrateAllPisToCustomer = async (targetCustomerId) => {
+    try {
+      if (!targetCustomerId) return;
+      setMigratingTo(targetCustomerId);
+      const r = await fetch(`${API_URL}/api/payment_intents/assign_customer`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ source_customer_id: id, target_customer_id: targetCustomerId })
+      });
+      if (!r.ok) {
+        const err = await r.json().catch(() => ({ error: 'Unknown error' }));
+        alert(`移行に失敗しました: ${err.error || r.statusText}`);
+        setMigratingTo(null);
+        return;
+      }
+      const result = await r.json();
+      const updatedCount = Array.isArray(result.updated) ? result.updated.length : 0;
+      const failedCount = Array.isArray(result.failed) ? result.failed.length : 0;
+      alert(`移行が完了しました: 成功 ${updatedCount} 件 / 失敗 ${failedCount} 件`);
+      navigate(`/customers/${targetCustomerId}`);
+    } catch (e) {
+      alert(`エラーが発生しました: ${e.message}`);
+    } finally {
+      setMigratingTo(null);
+    }
+  }
 
   const setDefault = (pid) => {
     fetch(`${API_URL}/api/customers/${id}/attach_default/${pid}`, {
@@ -497,8 +525,16 @@ export default function Customer(prop) {
                         <div className="stripe-list-item-title">{c.name || 'Unnamed Customer'}</div>
                         <div className="stripe-list-item-subtitle">{c.email || '—'}</div>
                       </div>
-                      <div className="stripe-list-item-meta">
+                      <div className="stripe-list-item-meta" style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                         <div className="stripe-text-sm" style={{ fontFamily: 'var(--font-family-mono)' }}>{c.id}</div>
+                        <button
+                          className="stripe-button stripe-button-secondary"
+                          onClick={(e) => { e.stopPropagation(); migrateAllPisToCustomer(c.id); }}
+                          disabled={migratingTo === c.id}
+                          style={{ fontSize: '12px', padding: '4px 8px' }}
+                        >
+                          {migratingTo === c.id ? '移行中…' : 'この顧客に移行'}
+                        </button>
                       </div>
                     </div>
                   ))}

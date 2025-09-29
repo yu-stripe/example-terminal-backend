@@ -747,6 +747,85 @@ get '/api/payment_intents/:id' do
   return pi.to_json
 end
 
+post '/api/payment_intents/assign_customer' do
+  begin
+    req = JSON.parse(request.body.read) rescue {}
+
+    # Mode A: Array-based assignment (backwards compatible)
+    target_customer_id = req['customer_id'] || params[:customer_id]
+    pi_ids = req['payment_intent_ids'] || req['payment_intents'] || req['pis']
+
+    # Mode B: Move all PIs from a source customer to a target customer
+    source_customer_id = req['source_customer_id'] || params[:source_customer_id]
+    target_customer_id ||= (req['target_customer_id'] || params[:target_customer_id])
+
+    # Determine operation mode
+    if (source_customer_id && target_customer_id)
+      # Move all PIs linked to source -> target
+      updated = []
+      failed = []
+      begin
+        # Retrieve PaymentIntents for the source customer (paginate if needed)
+        starting_after = nil
+        loop do
+          list = Stripe::PaymentIntent.list({
+            limit: 100,
+            customer: source_customer_id
+          }.compact.merge(starting_after ? { starting_after: starting_after } : {}))
+
+          list.data.each do |pi|
+            begin
+              upd = Stripe::PaymentIntent.update(pi.id, { customer: target_customer_id })
+              updated << { id: upd.id, customer: upd.customer }
+            rescue Stripe::StripeError => e
+              failed << { id: pi.id, error: e.message }
+            rescue => e
+              failed << { id: pi.id, error: e.message }
+            end
+          end
+
+          break unless list.has_more
+          starting_after = list.data.last.id
+        end
+      rescue Stripe::StripeError => e
+        status 402
+        return({ error: e.message }.to_json)
+      end
+
+      status 200
+      content_type :json
+      return({ source_customer_id: source_customer_id, target_customer_id: target_customer_id, updated: updated, failed: failed }.to_json)
+    else
+      # Fallback to array-based behavior
+      pi_ids = pi_ids.is_a?(Array) ? pi_ids.compact.map(&:to_s).reject(&:empty?) : []
+      if target_customer_id.nil? || target_customer_id.to_s.empty? || pi_ids.empty?
+        status 400
+        return({ error: 'Provide source_customer_id+target_customer_id OR customer_id+payment_intent_ids[]' }.to_json)
+      end
+
+      updated = []
+      failed = []
+      pi_ids.each do |pi_id|
+        begin
+          pi = Stripe::PaymentIntent.update(pi_id, { customer: target_customer_id })
+          updated << { id: pi.id, customer: pi.customer }
+        rescue Stripe::StripeError => e
+          failed << { id: pi_id, error: e.message }
+        rescue => e
+          failed << { id: pi_id, error: e.message }
+        end
+      end
+
+      status 200
+      content_type :json
+      return({ customer_id: target_customer_id, updated: updated, failed: failed }.to_json)
+    end
+  rescue => e
+    status 400
+    return({ error: e.message }.to_json)
+  end
+end
+
 post '/api/customers/:id/attach_default/:pm_id' do
   customer = Stripe::Customer.update(params[:id], {invoice_settings: {default_payment_method: params[:pm_id]}})
   cards = Stripe::Customer.list_payment_methods(params[:id], {type: 'card'})
