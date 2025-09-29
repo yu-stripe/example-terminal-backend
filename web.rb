@@ -756,6 +756,21 @@ get '/api/payment_intents/:id' do
   return pi.to_json
 end
 
+get '/api/payment_intents/recent_guests' do
+  begin
+    list = Stripe::PaymentIntent.list({ limit: 50, expand: ['data.latest_charge'] })
+    guests = list.data.select { |pi| pi.customer.nil? }
+    guests_sorted = guests.sort_by { |pi| - (pi.created || 0) }
+    recent3 = guests_sorted.first(3)
+    status 200
+    content_type :json
+    return({ data: recent3 }.to_json)
+  rescue Stripe::StripeError => e
+    status 402
+    return({ error: e.message }.to_json)
+  end
+end
+
 post '/api/payment_intents/assign_customer' do
   begin
     req = JSON.parse(request.body.read) rescue {}

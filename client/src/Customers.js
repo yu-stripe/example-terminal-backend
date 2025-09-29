@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { API_URL } from './index.js'
 import { useNavigate } from "react-router-dom";
 import TerminalStatusBar from './components/TerminalStatusBar';
+import PaymentIntentsCard from './components/PaymentIntentsCard';
 import PosTerminalCard from './components/PosTerminalCard';
 import { useTerminal } from './context/TerminalContext';
 import './stripe-theme.css';
@@ -12,6 +13,7 @@ export default function Customers() {
   const [customers, setCustomers] = useState([]);
   const [amount, setAmount] = useState(0);
   const { selectedTerminal } = useTerminal();
+  const [recentGuests, setRecentGuests] = useState({ data: [] });
   const [creating, setCreating] = useState(false);
 
   useEffect(() => {
@@ -19,6 +21,19 @@ export default function Customers() {
       const { data } = await r.json();
       setCustomers(data);
     });
+  }, []);
+
+  useEffect(() => {
+    const fetchRecent = async () => {
+      try {
+        const r = await fetch(`${API_URL}/api/payment_intents/recent_guests`);
+        const data = await r.json();
+        setRecentGuests(data || { data: [] });
+      } catch (e) {
+        setRecentGuests({ data: [] });
+      }
+    };
+    fetchRecent();
   }, []);
 
   const goToCustomer = (customer) => {
@@ -175,6 +190,60 @@ export default function Customers() {
               onCancel={cannel}
             />
           </div>
+
+          {/* Recent Guest Payments */}
+          <PaymentIntentsCard
+            paymentIntents={recentGuests}
+            onRefund={async (pi) => {
+              try {
+                const isConfirmed = window.confirm(`この支払いを返金しますか？\nPI: ${pi.id}`);
+                if (!isConfirmed) return;
+                const resp = await fetch(`${API_URL}/api/refunds`, {
+                  method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ payment_intent: pi.id, confirm: true })
+                });
+                if (!resp.ok) {
+                  const err = await resp.json().catch(() => ({ error: 'Unknown error' }));
+                  alert(`返金に失敗しました: ${err.error || resp.statusText}`);
+                  return;
+                }
+                alert('返金しました');
+              } catch (e) {
+                alert(`エラー: ${e.message}`);
+              }
+            }}
+            getStatusBadge={(pi) => {
+              try {
+                const latest = pi.latest_charge;
+                const refundedAmount = latest && latest.amount_refunded ? latest.amount_refunded : 0;
+                if (refundedAmount > 0 && latest && refundedAmount >= (latest.amount || pi.amount || 0)) {
+                  return { className: 'stripe-badge-muted', label: '返金済み' };
+                }
+              } catch(e) {}
+              switch(pi.status) {
+                case 'succeeded': return { className: 'stripe-badge-success', label: '支払い済み' };
+                case 'processing': return { className: 'stripe-badge-warning', label: '支払い中' };
+                case 'requires_payment_method': return { className: 'stripe-badge-error', label: '支払い方法なし' };
+                default: return { className: 'stripe-badge-info', label: pi.status };
+              }
+            }}
+            getRefundInfo={(pi) => {
+              try {
+                const latest = pi.latest_charge;
+                if (latest && typeof latest === 'object') {
+                  const totalAmount = latest.amount || pi.amount || 0;
+                  const refundedAmount = latest.amount_refunded || 0;
+                  if (refundedAmount <= 0) return { refunded: 0, status: 'none' };
+                  if (latest.refunded === true || refundedAmount >= totalAmount) {
+                    return { refunded: refundedAmount, status: 'refunded' };
+                  }
+                  return { refunded: refundedAmount, status: 'partially_refunded' };
+                }
+                return { refunded: 0, status: 'none' };
+              } catch(e) {
+                return { refunded: 0, status: 'none' };
+              }
+            }}
+          />
 
           {customers.length === 0 ? (
             <div className="stripe-card">
