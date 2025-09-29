@@ -563,8 +563,19 @@ export default function Customer(prop) {
                             {pi.status}
                           </div>
                           {(() => {
+                            const info = getRefundInfo(pi);
+                            if (info.status === 'refunded') {
+                              return <div className="stripe-badge stripe-badge-success">refunded</div>;
+                            }
+                            if (info.status === 'partially_refunded') {
+                              return <div className="stripe-badge stripe-badge-warning">partially refunded</div>;
+                            }
+                            return null;
+                          })()}
+                          {(() => {
                             const methodType = Array.isArray(pi.payment_method_types) ? pi.payment_method_types[0] : undefined;
                             if (pi.status !== 'succeeded') return null;
+                            const refundState = getRefundInfo(pi).status;
                             return (
                               <>
                                 {(methodType === 'card' || methodType === 'card_present') && (
@@ -572,6 +583,7 @@ export default function Customer(prop) {
                                     className="stripe-button stripe-button-secondary"
                                     style={{ fontSize: '12px', padding: '4px 8px' }}
                                     onClick={() => refundPayment(pi)}
+                                    disabled={refundState === 'refunded'}
                                   >
                                     Refund
                                   </button>
