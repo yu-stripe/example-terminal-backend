@@ -451,17 +451,56 @@ def generate_random_camera_metadata
   }
 end
 
+def build_purchase_description(metadata)
+  begin
+    area_value = metadata[:area] || metadata['area']
+    floor_value = metadata[:floor] || metadata['floor']
+    brand_value = metadata[:brand] || metadata['brand']
+    product_name_value = metadata[:product_name] || metadata['product_name']
+    item_name = product_name_value
+    if brand_value && item_name && item_name.start_with?("#{brand_value} ")
+      item_name = item_name.sub(/^#{Regexp.escape(brand_value)}\s+/, '')
+    end
+    location_str = [area_value, floor_value].compact.join(' ')
+    if brand_value && item_name
+      return "#{location_str} で、#{brand_value} の #{item_name} を購入"
+    else
+      return "#{location_str} で、#{product_name_value} を購入"
+    end
+  rescue => e
+    return '購入'
+  end
+end
+
+def update_customer_metadata_with_brand_label(customer_id, metadata)
+  begin
+    return if customer_id.nil? || customer_id.to_s.empty? || metadata.nil?
+    brand_value = metadata[:brand] || metadata['brand']
+    label_value = metadata[:label] || metadata['label']
+    update_meta = {}
+    update_meta[:brand] = brand_value if brand_value
+    update_meta[:label] = label_value if label_value
+    return if update_meta.empty?
+    Stripe::Customer.update(customer_id, { metadata: update_meta })
+  rescue Stripe::StripeError => e
+    log_info("Failed to update customer metadata with brand/label: #{e.message}")
+  end
+end
+
 post '/api/customers/:id/payment_intent' do
   req = JSON.parse(request.body.read)
   amount = req['amount']
   metadata = generate_random_camera_metadata
+  description_str = build_purchase_description(metadata)
 
   payment_intent = Stripe::PaymentIntent.create(
     amount: amount,
     currency: 'jpy',
     customer: params[:id],
+    description: description_str,
     metadata: metadata,
   )
+  update_customer_metadata_with_brand_label(params[:id], metadata)
 
   {
     id: payment_intent.id,
@@ -656,6 +695,7 @@ post '/api/terminal/:id/payment_intent' do
   amount = req['amount']
 
   metadata = generate_random_camera_metadata
+  description_str = build_purchase_description(metadata)
 
   intent = Stripe::PaymentIntent.create({
     currency: 'jpy',
@@ -663,8 +703,10 @@ post '/api/terminal/:id/payment_intent' do
     payment_method_types: ['card_present'],
     amount: amount,
     setup_future_usage: "off_session",
+    description: description_str,
     metadata: metadata,
   })
+  update_customer_metadata_with_brand_label(customer, metadata)
 
   process = Stripe::Terminal::Reader.process_payment_intent(params[:id], {payment_intent: intent.id, process_config: {allow_redisplay: 'always'}})
   return process.to_json

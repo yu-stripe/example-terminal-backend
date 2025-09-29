@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from "react-router-dom";
 import { Link } from 'react-router-dom';
 import TimeFormatter from "./TimeFormatter"
@@ -40,27 +40,7 @@ export default function Customer(prop) {
     }
   };
 
-  const tagCloud = useMemo(() => {
-    const counts = new Map();
-    const excludeKeys = new Set(['product_image', 'product_description']);
-    const pis = paymentIntents && paymentIntents.data ? paymentIntents.data : [];
-
-    pis.forEach((pi) => {
-      if (!pi || !pi.metadata) return;
-      Object.entries(pi.metadata).forEach(([key, value]) => {
-        if (!value || excludeKeys.has(key)) return;
-        const token = `${key}:${String(value)}`;
-        counts.set(token, (counts.get(token) || 0) + 1);
-      });
-    });
-
-    const items = Array.from(counts.entries())
-      .map(([label, count]) => ({ label, count }))
-      .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label));
-
-    const maxCount = items.reduce((m, t) => Math.max(m, t.count), 0);
-    return { items, maxCount };
-  }, [paymentIntents]);
+  
 
   useEffect(() => {
     fetch(`${API_URL}/api/customers/${id}`).then(async(r) => {
@@ -442,12 +422,41 @@ export default function Customer(prop) {
                   )}
                 </div>
 
-                {customer && customer.metadata && Object.entries(customer.metadata).map(([key, value], index) => (
-                  <div key={index} className="stripe-flex stripe-justify-between">
-                    <span className="stripe-text" style={{ fontWeight: '500' }}>{key}</span>
-                    <span className="stripe-text">{value}</span>
+                {/* Metadata section */}
+                {customer && (
+                  <div className="stripe-flex stripe-flex-col stripe-gap-2">
+                    <div className="stripe-text" style={{ fontWeight: '600', marginTop: '8px' }}>Metadata</div>
+
+                    {/* Highlight brand/label as badges if present */}
+                    {customer.metadata && (customer.metadata.brand || customer.metadata.label) && (
+                      <div className="stripe-flex stripe-flex-wrap" style={{ gap: '6px' }}>
+                        {customer.metadata.brand && (
+                          <span className="stripe-badge" style={{ fontSize: '10px' }}>brand: {String(customer.metadata.brand)}</span>
+                        )}
+                        {customer.metadata.label && (
+                          <span className="stripe-badge" style={{ fontSize: '10px' }}>label: {String(customer.metadata.label)}</span>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Remaining metadata as key/value rows */}
+                    {customer.metadata && Object.entries(customer.metadata)
+                      .filter(([k]) => k !== 'brand' && k !== 'label')
+                      .map(([key, value], index) => (
+                        <div key={index} className="stripe-flex stripe-justify-between">
+                          <span className="stripe-text" style={{ fontWeight: '500' }}>{key}</span>
+                          <span className="stripe-text">{String(value)}</span>
+                        </div>
+                      ))}
+
+                    {/* Empty state */}
+                    {(!customer.metadata || Object.keys(customer.metadata).length === 0) && (
+                      <div className="stripe-text stripe-text-sm" style={{ color: 'var(--stripe-gray-400)' }}>
+                        No metadata
+                      </div>
+                    )}
                   </div>
-                ))}
+                )}
               </div>
             </div>
 
@@ -502,19 +511,34 @@ export default function Customer(prop) {
               <div className="stripe-list">
                 {paymentIntents.data.map((pi, index) => (
                   <div key={index} className="stripe-list-item">
-                    <div className="stripe-list-item-content">
-                      <div className="stripe-list-item-title">
-                        <TimeFormatter timestamp={pi.created}></TimeFormatter>
+                    <div className="stripe-flex stripe-flex-col" style={{ width: '100%', gap: '6px' }}>
+                      {/* 1行目: 金額 / ステータス */}
+                      <div className="stripe-flex stripe-justify-between stripe-items-center">
+                        <span className="stripe-text" style={{ fontWeight: '600', whiteSpace: 'nowrap' }}>
+                          {pi?.currency?.toLowerCase() === 'jpy' ? `¥${Number(pi.amount).toLocaleString('ja-JP')}` : `$${pi.amount}`} {pi.currency.toUpperCase()}
+                        </span>
+                        <div className={`stripe-badge ${getStatusBadge(pi.status)}`}>
+                          {pi.status}
+                        </div>
                       </div>
-                      <div className="stripe-list-item-subtitle">
-                        {(pi.payment_method_types[0] === 'card') ? "オンライン" : "対面"}
+
+                      {/* 2行目: 日付 / 店頭|オンライン */}
+                      <div className="stripe-flex stripe-justify-between stripe-items-center">
+                        <span className="stripe-text">
+                          <TimeFormatter timestamp={pi.created}></TimeFormatter>
+                        </span>
+                        <span className="stripe-badge stripe-badge-info" style={{ whiteSpace: 'nowrap' }}>
+                          {(pi.payment_method_types[0] === 'card') ? 'オンライン' : '店頭'}
+                        </span>
                       </div>
+
+                      {/* 3行目(任意): タグ */}
                       {pi.metadata && Object.keys(pi.metadata).length > 0 && (
-                        <div className="stripe-flex stripe-flex-wrap stripe-gap-2" style={{ marginTop: '6px' }}>
+                        <div className="stripe-flex stripe-flex-wrap" style={{ marginTop: '2px', gap: '4px' }}>
                           {Object.entries(pi.metadata)
                             .filter(([key, value]) => value && key !== 'product_image')
                             .map(([key, value], i) => {
-                              const c = colorForId(pi.id || index);
+                              const c = colorForId(key);
                               return (
                                 <span
                                   key={`${key}-${i}`}
@@ -523,6 +547,10 @@ export default function Customer(prop) {
                                     backgroundColor: c.bg,
                                     borderColor: c.border,
                                     color: c.text,
+                                    fontSize: '10px',
+                                    padding: '2px 6px',
+                                    lineHeight: 1.2,
+                                    borderRadius: '8px',
                                   }}
                                 >
                                   {String(value)}
@@ -531,14 +559,6 @@ export default function Customer(prop) {
                             })}
                         </div>
                       )}
-                    </div>
-                    <div className="stripe-flex stripe-items-center stripe-gap-3">
-                      <span className="stripe-text" style={{ fontWeight: '500' }}>
-                        ${(pi.amount)} {pi.currency.toUpperCase()}
-                      </span>
-                      <div className={`stripe-badge ${getStatusBadge(pi.status)}`}>
-                        {pi.status}
-                      </div>
                     </div>
                   </div>
                 ))}
@@ -550,43 +570,7 @@ export default function Customer(prop) {
             )}
           </div>
 
-          {/* Tag Cloud from PaymentIntent metadata */}
-          <div className="stripe-card stripe-mt-6">
-            <div className="stripe-card-header">
-              <h3 className="stripe-card-title">タグクラウド (Metadata Tags)</h3>
-              <p className="stripe-card-subtitle">PaymentIntent の metadata を集計</p>
-            </div>
-            <div className="stripe-card-body">
-              {tagCloud.items && tagCloud.items.length > 0 ? (
-                <div className="stripe-flex stripe-flex-wrap stripe-gap-2">
-                  {tagCloud.items.slice(0, 50).map((tag) => {
-                    const weight = tagCloud.maxCount > 0 ? tag.count / tagCloud.maxCount : 0;
-                    const fontSize = 12 + Math.round(8 * weight); // 12px - 20px
-                    const bgAlpha = 0.2 + 0.5 * weight; // 0.2 - 0.7
-                    return (
-                      <span
-                        key={tag.label}
-                        className="stripe-badge"
-                        title={`${tag.label} (${tag.count})`}
-                        style={{
-                          fontSize: `${fontSize}px`,
-                          backgroundColor: `rgba(59, 130, 246, ${bgAlpha})`,
-                          borderColor: 'rgba(59, 130, 246, 0.6)',
-                          color: 'white'
-                        }}
-                      >
-                        {tag.label}
-                      </span>
-                    );
-                  })}
-                </div>
-              ) : (
-                <div className="stripe-text stripe-text-sm" style={{ textAlign: 'center', color: 'var(--stripe-gray-400)' }}>
-                  No metadata tags yet
-                </div>
-              )}
-            </div>
-          </div>
+          
 
           {/* Email Collection */}
           <div className="stripe-card stripe-mt-6">
