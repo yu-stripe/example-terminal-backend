@@ -15,6 +15,7 @@ export default function Customer(prop) {
   const [paymentIntents, setPaymentIntents] = useState({});
   const [piCust, setPiCust] = useState(null);
   const [pI, setPi] = useState(null);
+  const [checkoutUrl, setCheckoutUrl] = useState('');
 
   const [amount, setAmount] = useState(0);
   const [collectedEmail, setCollectedEmail] = useState('');
@@ -331,20 +332,33 @@ export default function Customer(prop) {
     });
   }
 
-  let createPaymentIntent = () => {
-    fetch(`${API_URL}/api/customers/${id}/payment_intent`, {
-      method: "POST",
-      body: JSON.stringify({amount: amount })
-    }).then(async(r) => {
-      const pi = await r.json();
-      setPi(`${pi.id}`)
-    });
+  let createCheckoutSession = async () => {
+    try {
+      const r = await fetch(`${API_URL}/api/customers/${id}/checkout_session`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ amount: amount })
+      });
+      if (!r.ok) {
+        const err = await r.json().catch(() => ({ error: 'Unknown error' }));
+        alert(`Failed to create checkout session: ${err.error || r.statusText}`);
+        return;
+      }
+      const session = await r.json();
+      if (session.url) {
+        setCheckoutUrl(session.url);
+      } else {
+        alert('No session URL returned.');
+      }
+    } catch (e) {
+      alert(`Error creating checkout session: ${e.message}`);
+    }
   }
 
   const getStatusBadge = (pi) => {
     const refundState = getRefundInfo(pi).status;
     if (refundState === 'refunded') {
-      return { className: 'stripe-badge-success', label: '返金済み' };
+      return { className: 'stripe-badge-muted', label: '返金済み' };
     }
     switch(pi.status) {
       case 'succeeded':
@@ -572,10 +586,10 @@ export default function Customer(prop) {
                     <div className="stripe-flex stripe-flex-col" style={{ width: '100%', gap: '6px' }}>
                       {/* 1行目: 金額 / ステータス */}
                       <div className="stripe-flex stripe-justify-between stripe-items-center">
-                        <span className="stripe-text" style={{ fontWeight: '600', whiteSpace: 'nowrap' }}>
-                          {pi?.currency?.toLowerCase() === 'jpy' ? `¥${Number(pi.amount).toLocaleString('ja-JP')}` : `$${pi.amount}`} {pi.currency.toUpperCase()}
-                        </span>
-                        <div className="stripe-flex stripe-items-center" style={{ gap: '8px' }}>
+                        <div className="stripe-flex stripe-items-center" style={{ gap: '8px', alignItems: 'baseline' }}>
+                          <span className="stripe-text" style={{ fontWeight: '600', whiteSpace: 'nowrap' }}>
+                            {pi?.currency?.toLowerCase() === 'jpy' ? `¥${Number(pi.amount).toLocaleString('ja-JP')}` : `$${pi.amount}`} {pi.currency.toUpperCase()}
+                          </span>
                           {(() => {
                             const s = getStatusBadge(pi);
                             return (
@@ -584,6 +598,8 @@ export default function Customer(prop) {
                               </div>
                             );
                           })()}
+                        </div>
+                        <div className="stripe-flex stripe-items-center" style={{ gap: '8px' }}>
                           {(() => {
                             const methodType = Array.isArray(pi.payment_method_types) ? pi.payment_method_types[0] : undefined;
                             if (pi.status !== 'succeeded') return null;
@@ -852,9 +868,12 @@ export default function Customer(prop) {
               </div>
               
               <div className="stripe-flex stripe-flex-col stripe-gap-4">
-                {pI && (
+                {checkoutUrl && (
                   <div style={{ textAlign: 'center', padding: '16px', backgroundColor: 'var(--stripe-gray-50)', borderRadius: 'var(--radius-md)' }}>
-                    <QRCode value={pI} size={120} />
+                    <QRCode value={checkoutUrl} size={140} />
+                    <div className="stripe-text-sm" style={{ marginTop: '8px', wordBreak: 'break-all' }}>
+                      <a href={checkoutUrl} target="_blank" rel="noopener noreferrer">{checkoutUrl}</a>
+                    </div>
                   </div>
                 )}
                 
@@ -881,7 +900,7 @@ export default function Customer(prop) {
                   </div>
                 </div>
                 
-                <button onClick={createPaymentIntent} className="stripe-button stripe-button-primary">
+                <button onClick={createCheckoutSession} className="stripe-button stripe-button-primary">
                   Create Online Payment
                 </button>
               </div>

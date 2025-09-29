@@ -5,6 +5,7 @@
   --stripe-purple-light: #7c7cff;
   --stripe-blue: #00d4ff;
   --stripe-green: #00d924;
+  --stripe-green-dark: #059669;
   --stripe-orange: #ff5722;
   --stripe-red: #df1b41;
   --stripe-gray-50: #fafbfc;
@@ -304,7 +305,7 @@ body {
 
 .stripe-badge-success {
   background-color: rgba(0, 217, 36, 0.1);
-  color: var(--stripe-green);
+  color: var(--stripe-green-dark);
 }
 
 .stripe-badge-warning {
@@ -320,6 +321,11 @@ body {
 .stripe-badge-info {
   background-color: rgba(99, 91, 255, 0.1);
   color: var(--stripe-purple);
+}
+
+.stripe-badge-muted {
+  background-color: rgba(156, 163, 175, 0.1);
+  color: var(--stripe-gray-600);
 }
 
 /* Grid */

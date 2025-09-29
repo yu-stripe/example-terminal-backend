@@ -1017,6 +1017,54 @@ post '/api/custom_checkout' do
 end
 
 
+# Create a Checkout Session with specified customer and amount
+# Mirrors Terminal PaymentIntent metadata behavior
+post '/api/customers/:id/checkout_session' do
+  req = JSON.parse(request.body.read) rescue {}
+  amount = (req['amount'] || 0).to_i
+  customer_id = params[:id]
+
+  begin
+    brand_override = get_customer_brand(customer_id)
+    metadata = generate_random_camera_metadata(brand_override)
+    description_str = build_purchase_description(metadata)
+
+    session = Stripe::Checkout::Session.create(
+      mode: 'payment',
+      customer: customer_id,
+      success_url: 'https://your_return_url.com/success?session_id={CHECKOUT_SESSION_ID}',
+      cancel_url: 'https://your_return_url.com/cancel',
+      allow_promotion_codes: true,
+      line_items: [{
+        price_data: {
+          currency: 'jpy',
+          unit_amount: amount,
+          product_data: { name: description_str }
+        },
+        quantity: 1
+      }],
+      metadata: metadata,
+      payment_intent_data: {
+        description: description_str,
+        metadata: metadata,
+        setup_future_usage: 'off_session'
+      }
+    )
+
+    update_customer_metadata_with_brand_label(customer_id, metadata)
+
+    content_type :json
+    { id: session.id, url: session.url }.to_json
+  rescue Stripe::StripeError => e
+    status 400
+    { error: e.message }.to_json
+  rescue => e
+    status 500
+    { error: "An unexpected error occurred: #{e.message}" }.to_json
+  end
+end
+
+
 post '/api/payment_link' do
   if request.media_type == 'multipart/form-data'
     amount = params[:amount]
