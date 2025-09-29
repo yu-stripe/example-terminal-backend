@@ -372,6 +372,32 @@ get '/api/customers' do
   return Stripe::Customer.list({limit: 5}).to_json
 end
 
+post '/api/customers' do
+  # Create a temporary/demo customer
+  begin
+    req = JSON.parse(request.body.read) rescue {}
+    name = req['name'] || '仮ユーザー'
+    email = req['email']
+    description = req['description'] || 'Temporary customer created from demo'
+
+    customer = Stripe::Customer.create({
+      name: name,
+      email: email,
+      description: description,
+      metadata: { temporary: 'true' }
+    }.compact)
+
+    status 200
+    return customer.to_json
+  rescue Stripe::StripeError => e
+    status 402
+    return { error: e.message }.to_json
+  rescue => e
+    status 400
+    return { error: e.message }.to_json
+  end
+end
+
 get '/api/customers/:id' do
   cards = Stripe::Customer.list_payment_methods(params[:id], {type: 'card'})
   unique_cards = cards.data.uniq { |card| [card.card.fingerprint] }

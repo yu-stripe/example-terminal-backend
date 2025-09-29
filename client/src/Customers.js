@@ -8,6 +8,7 @@ import './stripe-theme.css';
 export default function Customers() {
   const navigate = useNavigate();
   const [customers, setCustomers] = useState([]);
+  const [creating, setCreating] = useState(false);
 
   useEffect(() => {
     fetch(`${API_URL}/api/customers`).then(async(r) => {
@@ -22,6 +23,29 @@ export default function Customers() {
 
   const goHome = () => {
     navigate('/')
+  }
+
+  const createNewCustomer = async () => {
+    if (creating) return;
+    setCreating(true);
+    try {
+      const r = await fetch(`${API_URL}/api/customers`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: '仮ユーザー' })
+      });
+      if (!r.ok) {
+        const err = await r.json().catch(() => ({ error: 'Unknown error' }));
+        alert(`作成に失敗しました: ${err.error || r.statusText}`);
+        setCreating(false);
+        return;
+      }
+      const cus = await r.json();
+      navigate(`/customers/${cus.id}`);
+    } catch (e) {
+      alert(`エラー: ${e.message}`);
+      setCreating(false);
+    }
   }
 
   return (
@@ -57,10 +81,21 @@ export default function Customers() {
       <main className="stripe-main">
         <div className="stripe-container">
           <div className="stripe-mb-6">
-            <h1 className="stripe-h1">Customers</h1>
-            <p className="stripe-text">
-              Manage your customer database and view customer details.
-            </p>
+            <div className="stripe-flex stripe-justify-between stripe-items-center" style={{ gap: '12px', flexWrap: 'wrap' }}>
+              <div>
+                <h1 className="stripe-h1">Customers</h1>
+                <p className="stripe-text">
+                  Manage your customer database and view customer details.
+                </p>
+              </div>
+              <button 
+                className="stripe-button stripe-button-primary"
+                onClick={createNewCustomer}
+                disabled={creating}
+              >
+                {creating ? '作成中…' : '新規カスタマー作成'}
+              </button>
+            </div>
           </div>
 
           {customers.length === 0 ? (
@@ -70,6 +105,13 @@ export default function Customers() {
                 <p className="stripe-text">
                   Your customers will appear here once you start processing payments.
                 </p>
+                <button 
+                  className="stripe-button stripe-button-primary"
+                  onClick={createNewCustomer}
+                  disabled={creating}
+                >
+                  {creating ? '作成中…' : '新規カスタマー作成'}
+                </button>
               </div>
             </div>
           ) : (
