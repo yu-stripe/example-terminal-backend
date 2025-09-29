@@ -478,19 +478,18 @@ end
 
 def build_purchase_description(metadata)
   begin
-    area_value = metadata[:area] || metadata['area']
-    floor_value = metadata[:floor] || metadata['floor']
+
     brand_value = metadata[:brand] || metadata['brand']
     product_name_value = metadata[:product_name] || metadata['product_name']
     item_name = product_name_value
     if brand_value && item_name && item_name.start_with?("#{brand_value} ")
       item_name = item_name.sub(/^#{Regexp.escape(brand_value)}\s+/, '')
     end
-    location_str = [area_value, floor_value].compact.join(' ')
+    
     if brand_value && item_name
-      return "#{location_str} で、#{brand_value} の #{item_name} を購入"
+      return "#{brand_value} #{item_name}"
     else
-      return "#{location_str} で、#{product_name_value} を購入"
+      return "#{product_name_value}"
     end
   rescue => e
     return '購入'
@@ -1032,8 +1031,8 @@ post '/api/customers/:id/checkout_session' do
     session = Stripe::Checkout::Session.create(
       mode: 'payment',
       customer: customer_id,
-      success_url: 'https://your_return_url.com/success?session_id={CHECKOUT_SESSION_ID}',
-      cancel_url: 'https://your_return_url.com/cancel',
+      success_url: 'https://example-terminal-backend-1.onrender.com/',
+      cancel_url: 'https://example-terminal-backend-1.onrender.com/',
       allow_promotion_codes: true,
       line_items: [{
         price_data: {
