@@ -571,7 +571,7 @@ get '/api/customers/:id/payment_intents' do
   pis = Stripe::PaymentIntent.list({
     limit: 10,
     customer: params[:id],
-    expand: ['data.charges.data.refunds']
+    expand: ['data.latest_charge']
   })
 
   return pis.to_json

@@ -356,6 +356,19 @@ export default function Customer(prop) {
 
   const getRefundInfo = (pi) => {
     try {
+      // Prefer latest_charge (expanded) if available
+      const latest = pi.latest_charge;
+      if (latest && typeof latest === 'object') {
+        const totalAmount = latest.amount || pi.amount || 0;
+        const refundedAmount = latest.amount_refunded || 0;
+        if (refundedAmount <= 0) return { refunded: 0, status: 'none' };
+        if (latest.refunded === true || refundedAmount >= totalAmount) {
+          return { refunded: refundedAmount, status: 'refunded' };
+        }
+        return { refunded: refundedAmount, status: 'partially_refunded' };
+      }
+
+      // Fallback to charges array if latest_charge not expanded
       const charges = pi.charges && pi.charges.data ? pi.charges.data : [];
       if (charges.length === 0) return { refunded: 0, status: 'none' };
       const totalAmount = charges.reduce((sum, c) => sum + (c.amount || 0), 0);
