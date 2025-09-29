@@ -467,12 +467,12 @@ export default function Customer(prop) {
                         <TimeFormatter timestamp={pi.created}></TimeFormatter>
                       </div>
                       <div className="stripe-list-item-subtitle">
-                        {(pi.payment_method_types[0] === 'card') ? "オンライン支払い" : "店頭支払い"}
+                        {(pi.payment_method_types[0] === 'card') ? "オンライン" : "対面"}
                       </div>
                     </div>
                     <div className="stripe-flex stripe-items-center stripe-gap-3">
                       <span className="stripe-text" style={{ fontWeight: '500' }}>
-                        ${(pi.amount).toFixed(2)} {pi.currency.toUpperCase()}
+                        ${(pi.amount)} {pi.currency.toUpperCase()}
                       </span>
                       <div className={`stripe-badge ${getStatusBadge(pi.status)}`}>
                         {pi.status}
