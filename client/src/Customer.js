@@ -542,12 +542,37 @@ export default function Customer(prop) {
                 <div className="stripe-flex stripe-flex-col stripe-gap-3">
                   {customer.cards.map((card, index) => (
                     <div key={index} className="stripe-flex stripe-justify-between stripe-items-center" style={{ padding: '12px', backgroundColor: 'var(--stripe-gray-50)', borderRadius: 'var(--radius-md)' }}>
-                      <div className="stripe-flex stripe-items-center stripe-gap-3">
-                        <div className="stripe-badge stripe-badge-info">{card.card.display_brand}</div>
-                        <span className="stripe-text">**** **** **** {card.card.last4}</span>
-                        <span className="stripe-text-sm">
-                          {card.card.generated_from?.payment_method_details?.type || 'online'}
-                        </span>
+                      <div className="stripe-flex stripe-flex-col" style={{ gap: '4px' }}>
+                        <div className="stripe-flex stripe-items-center stripe-gap-3">
+                          <div className="stripe-badge stripe-badge-info">{card.card.display_brand}</div>
+                          <span className="stripe-text">**** **** **** {card.card.last4}</span>
+                          <span className="stripe-badge stripe-badge-info" style={{ whiteSpace: 'nowrap' }}>
+                            {(() => {
+                              const t = card.card.generated_from?.payment_method_details?.type;
+                              return (t && (t === 'card_present' || (typeof t === 'string' && t.endsWith('_present')))) ? '店頭' : 'オンライン';
+                            })()}
+                          </span>
+                        </div>
+                        <div className="stripe-text-sm" style={{ color: 'var(--stripe-gray-500)', display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                          <span>country: {card.card.country || '—'}</span>
+                          <span>display_brand: {card.card.display_brand || '—'}</span>
+                          <span>funding: {card.card.funding || '—'}</span>
+                          {card.card.fingerprint ? (
+                            <span>
+                              fingerprint: {' '}
+                              <a
+                                href={`https://dashboard.stripe.com/test/search?query=fingerprint%3A${encodeURIComponent(card.card.fingerprint)}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                style={{ fontFamily: 'var(--font-family-mono)' }}
+                              >
+                                {card.card.fingerprint}
+                              </a>
+                            </span>
+                          ) : (
+                            <span>fingerprint: —</span>
+                          )}
+                        </div>
                       </div>
                       <div className="stripe-flex stripe-items-center stripe-gap-2">
                         {card.id === customer.invoice_settings?.default_payment_method ? (
