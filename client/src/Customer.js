@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from "react-router-dom";
 import { Link } from 'react-router-dom';
 import TimeFormatter from "./TimeFormatter"
@@ -21,6 +21,28 @@ export default function Customer(prop) {
   const [emailCollectionStatus, setEmailCollectionStatus] = useState('');
 
   const { selectedTerminal } = useTerminal();
+
+  const tagCloud = useMemo(() => {
+    const counts = new Map();
+    const excludeKeys = new Set(['product_image', 'product_description']);
+    const pis = paymentIntents && paymentIntents.data ? paymentIntents.data : [];
+
+    pis.forEach((pi) => {
+      if (!pi || !pi.metadata) return;
+      Object.entries(pi.metadata).forEach(([key, value]) => {
+        if (!value || excludeKeys.has(key)) return;
+        const token = `${key}:${String(value)}`;
+        counts.set(token, (counts.get(token) || 0) + 1);
+      });
+    });
+
+    const items = Array.from(counts.entries())
+      .map(([label, count]) => ({ label, count }))
+      .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label));
+
+    const maxCount = items.reduce((m, t) => Math.max(m, t.count), 0);
+    return { items, maxCount };
+  }, [paymentIntents]);
 
   useEffect(() => {
     fetch(`${API_URL}/api/customers/${id}`).then(async(r) => {
@@ -496,6 +518,44 @@ export default function Customer(prop) {
                 No recent payments
               </div>
             )}
+          </div>
+
+          {/* Tag Cloud from PaymentIntent metadata */}
+          <div className="stripe-card stripe-mt-6">
+            <div className="stripe-card-header">
+              <h3 className="stripe-card-title">タグクラウド (Metadata Tags)</h3>
+              <p className="stripe-card-subtitle">PaymentIntent の metadata を集計</p>
+            </div>
+            <div className="stripe-card-body">
+              {tagCloud.items && tagCloud.items.length > 0 ? (
+                <div className="stripe-flex stripe-flex-wrap stripe-gap-2">
+                  {tagCloud.items.slice(0, 50).map((tag) => {
+                    const weight = tagCloud.maxCount > 0 ? tag.count / tagCloud.maxCount : 0;
+                    const fontSize = 12 + Math.round(8 * weight); // 12px - 20px
+                    const bgAlpha = 0.2 + 0.5 * weight; // 0.2 - 0.7
+                    return (
+                      <span
+                        key={tag.label}
+                        className="stripe-badge"
+                        title={`${tag.label} (${tag.count})`}
+                        style={{
+                          fontSize: `${fontSize}px`,
+                          backgroundColor: `rgba(59, 130, 246, ${bgAlpha})`,
+                          borderColor: 'rgba(59, 130, 246, 0.6)',
+                          color: 'white'
+                        }}
+                      >
+                        {tag.label}
+                      </span>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="stripe-text stripe-text-sm" style={{ textAlign: 'center', color: 'var(--stripe-gray-400)' }}>
+                  No metadata tags yet
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Email Collection */}
