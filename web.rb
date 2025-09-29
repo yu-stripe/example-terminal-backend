@@ -3,6 +3,7 @@ require 'stripe'
 require 'dotenv'
 require 'json'
 require 'sinatra/cross_origin'
+require 'securerandom'
 
 enable :sessions
 
@@ -367,10 +368,98 @@ post '/api/customers/:id/payment_intent' do
   req = JSON.parse(request.body.read)
   amount = req['amount']
 
+  # Generate randomized, camera-focused metadata
+  areas = ["Tokyo", "Osaka", "Yokohama", "Nagoya", "Sapporo", "Fukuoka"]
+  shops = ["shinjuku", "shibuya", "ikebukuro", "umeda", "sakae", "tenjin"]
+  floors = ["B1F", "1F", "2F", "3F", "4F", "5F"]
+
+  category_options = {
+    "Camera" => ["Mirrorless", "DSLR", "Compact", "Rangefinder"],
+    "Lens" => ["Zoom", "Prime", "Macro", "Telephoto"],
+    "Film" => ["Color", "Black & White", "Cine"],
+    "Accessory" => ["Tripod", "Bag", "Memory Card", "Flash", "Filter", "Battery", "Mic", "Strap"],
+  }
+
+  brands = [
+    "Canon", "Nikon", "Sony", "Fujifilm", "Leica", "Olympus", "Panasonic", "SIGMA", "Tamron"
+  ]
+
+  camera_models_by_brand = {
+    "Canon" => ["EOS R6 Mark II", "EOS R10", "EOS R5"],
+    "Nikon" => ["Z6 II", "Z fc", "Z8"],
+    "Sony" => ["α7 IV", "ZV-E10", "α7C II"],
+    "Fujifilm" => ["X-T5", "X100V", "X-S20"],
+    "Leica" => ["Q3", "M11", "SL2"],
+    "Olympus" => ["OM-1", "E-M10 Mark IV"],
+    "Panasonic" => ["LUMIX S5 II", "LUMIX G9 II"],
+  }
+
+  lenses_by_brand = {
+    "Canon" => ["RF 24-70mm F2.8", "RF 50mm F1.8"],
+    "Nikon" => ["Z 24-120mm F4", "Z 50mm F1.8"],
+    "Sony" => ["FE 24-105mm F4", "FE 35mm F1.8"],
+    "SIGMA" => ["24-70mm F2.8 DG DN", "35mm F1.4 DG DN"],
+    "Tamron" => ["28-75mm F2.8 G2", "70-180mm F2.8"],
+    "Fujifilm" => ["XF 23mm F1.4", "XF 56mm F1.2"],
+    "Panasonic" => ["S 50mm F1.8", "S 24-105mm F4"],
+  }
+
+  film_names = [
+    "Kodak Portra 400", "Kodak Tri-X 400", "Fujifilm Superia 400",
+    "Ilford HP5+", "Fujifilm Pro 400H", "Cinestill 800T"
+  ]
+
+  accessories = [
+    "Manfrotto Tripod", "SanDisk SDXC 128GB", "Peak Design Camera Strap",
+    "Lowepro Camera Bag", "Godox V1 Flash", "Rode VideoMicro Mic",
+    "Anker Battery Pack", "Kenko UV Filter 67mm"
+  ]
+
+  brand = brands.sample
+  category = category_options.keys.sample
+  sub_category = category_options[category].sample
+  sku = "SKU-#{SecureRandom.hex(2).upcase}-#{SecureRandom.hex(2).upcase}"
+
+  # Derive product name based on category
+  product_name_core = case category
+    when "Camera"
+      (camera_models_by_brand[brand] || ["Mirrorless Camera"]).sample
+    when "Lens"
+      (lenses_by_brand[brand] || ["50mm F1.8"]).sample
+    when "Film"
+      film = film_names.sample
+      brand = film.split.first # Align brand with film brand (e.g., Kodak, Fujifilm, Ilford)
+      film
+    when "Accessory"
+      accessories.sample
+    else
+      "Camera Item"
+  end
+
+  product_name = brand ? "#{brand} #{product_name_core}" : product_name_core
+  product_description = "#{product_name} (#{sub_category})"
+  image_url = "https://picsum.photos/seed/#{sku}/300/300"
+  film_name_value = film_names.sample
+  accessory_name_value = accessories.sample
+
   payment_intent = Stripe::PaymentIntent.create(
     amount: amount,
     currency: 'jpy',
     customer: params[:id],
+    metadata: {
+      shop_id: shops.sample,
+      area: areas.sample,
+      sku: sku,
+      floor: floors.sample,
+      category: category,
+      sub_category: sub_category,
+      brand: brand,
+      product_name: product_name,
+      product_description: product_description,
+      product_image: image_url,
+      film_name: film_name_value,
+      accessory_name: accessory_name_value,
+    }
   )
 
   {
