@@ -16,6 +16,8 @@ export default function Customer(prop) {
   const [piCust, setPiCust] = useState(null);
   const [pI, setPi] = useState(null);
   const [checkoutUrl, setCheckoutUrl] = useState('');
+  const [candidates, setCandidates] = useState([]);
+  const [candidatesStatus, setCandidatesStatus] = useState('');
 
   const [amount, setAmount] = useState(0);
   const [collectedEmail, setCollectedEmail] = useState('');
@@ -49,6 +51,39 @@ export default function Customer(prop) {
       setCustomer(cus);
     });
   }, []);
+
+  // Find candidate customers by latest payment method's fingerprint
+  useEffect(() => {
+    const fetchCandidates = async () => {
+      try {
+        if (!customer || !customer.cards || customer.cards.length === 0) return;
+        // Assume the first card in list is the most recent; otherwise sort by created if present
+        const sorted = [...customer.cards].sort((a, b) => {
+          const ca = (a.created || 0);
+          const cb = (b.created || 0);
+          return cb - ca;
+        });
+        const latest = sorted[0];
+        if (!latest || !latest.id) return;
+        setCandidatesStatus('loading');
+        const r = await fetch(`${API_URL}/api/customers/candidates_by_payment_method`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ payment_method_id: latest.id })
+        });
+        if (!r.ok) {
+          setCandidatesStatus('error');
+          return;
+        }
+        const data = await r.json();
+        setCandidates(data.candidates || []);
+        setCandidatesStatus('done');
+      } catch (e) {
+        setCandidatesStatus('error');
+      }
+    };
+    fetchCandidates();
+  }, [customer]);
 
   const setDefault = (pid) => {
     fetch(`${API_URL}/api/customers/${id}/attach_default/${pid}`, {
@@ -444,6 +479,33 @@ export default function Customer(prop) {
               Merchant Dashboard: {customer.name || 'Loading...'}
             </p>
           </div>
+
+          {/* Candidate Customers by latest PM */}
+          {(candidatesStatus === 'loading' || (Array.isArray(candidates) && candidates.length > 0)) && (
+            <div className="stripe-card stripe-mb-6">
+              <div className="stripe-card-header">
+                <h3 className="stripe-card-title">候補のカスタマー (by latest PaymentMethod)</h3>
+                <p className="stripe-card-subtitle">同一カードの指紋に基づく候補</p>
+              </div>
+              {candidatesStatus === 'loading' ? (
+                <div className="stripe-text" style={{ padding: '12px' }}>検索中…</div>
+              ) : (
+                <div className="stripe-list">
+                  {candidates.map((c) => (
+                    <div key={c.id} className="stripe-list-item" onClick={() => navigate(`/customers/${c.id}`)}>
+                      <div className="stripe-list-item-content">
+                        <div className="stripe-list-item-title">{c.name || 'Unnamed Customer'}</div>
+                        <div className="stripe-list-item-subtitle">{c.email || '—'}</div>
+                      </div>
+                      <div className="stripe-list-item-meta">
+                        <div className="stripe-text-sm" style={{ fontFamily: 'var(--font-family-mono)' }}>{c.id}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
 
           <div className="stripe-grid stripe-grid-2">
             {/* Customer Information */}

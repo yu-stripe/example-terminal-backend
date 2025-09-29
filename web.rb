@@ -407,6 +407,133 @@ get '/api/customers/:id' do
   return customer.to_json
 end
 
+def extract_fingerprint_from_payment_method(pm)
+  begin
+    # pm can be an object or id; normalize to object
+    pm_obj = pm.is_a?(String) ? Stripe::PaymentMethod.retrieve(pm) : pm
+    # Prefer regular card fingerprint
+    if pm_obj.respond_to?(:card) && pm_obj.card && pm_obj.card.respond_to?(:fingerprint)
+      return pm_obj.card.fingerprint
+    end
+    # Fallbacks (some present types may not include fingerprint)
+    if pm_obj.respond_to?(:card_present) && pm_obj.card_present && pm_obj.card_present.respond_to?(:fingerprint)
+      return pm_obj.card_present.fingerprint
+    end
+  rescue Stripe::StripeError => e
+    log_info("Failed to retrieve payment method: #{e.message}")
+  rescue => e
+    log_info("Unexpected error extracting fingerprint: #{e.message}")
+  end
+  return nil
+end
+
+def find_customer_candidates_by_fingerprint(fingerprint)
+  return [] if fingerprint.nil? || fingerprint.to_s.empty?
+
+  candidate_ids = {}
+
+  # 1) Try using Search API on Charges (best-effort)
+  begin
+    charges_search = Stripe::Charge.search({
+      query: "payment_method_details.card.fingerprint:'#{fingerprint}'",
+      limit: 20
+    })
+    charges_search.data.each do |ch|
+      if ch.respond_to?(:customer) && ch.customer && !ch.customer.to_s.empty?
+        candidate_ids[ch.customer] = true
+      end
+    end
+  rescue Stripe::StripeError => e
+    log_info("Charge.search not available or failed: #{e.message}")
+  rescue => e
+    log_info("Unexpected error during Charge.search: #{e.message}")
+  end
+
+  # 2) Fallback: Scan recent charges if search is unavailable
+  if candidate_ids.empty?
+    begin
+      charges = Stripe::Charge.list({ limit: 100 })
+      charges.data.each do |ch|
+        begin
+          pm_details = ch.respond_to?(:payment_method_details) ? ch.payment_method_details : nil
+          card = pm_details && pm_details.respond_to?(:card) ? pm_details.card : nil
+          fp = card && card.respond_to?(:fingerprint) ? card.fingerprint : nil
+          if fp && fp == fingerprint && ch.customer && !ch.customer.to_s.empty?
+            candidate_ids[ch.customer] = true
+          end
+        rescue => e
+          # ignore per-charge errors
+        end
+      end
+    rescue Stripe::StripeError => e
+      log_info("Charge.list failed: #{e.message}")
+    end
+  end
+
+  # 3) Also scan a small window of recent customers' saved cards
+  begin
+    recent_customers = Stripe::Customer.list({ limit: 20 })
+    recent_customers.data.each do |cus|
+      begin
+        pms = Stripe::Customer.list_payment_methods(cus.id, { type: 'card' })
+        pms.data.each do |pm|
+          card = pm.respond_to?(:card) ? pm.card : nil
+          fp = card && card.respond_to?(:fingerprint) ? card.fingerprint : nil
+          if fp && fp == fingerprint
+            candidate_ids[cus.id] = true
+          end
+        end
+      rescue Stripe::StripeError => e
+        # skip this customer on error
+      end
+    end
+  rescue Stripe::StripeError => e
+    log_info("Customer.list failed: #{e.message}")
+  end
+
+  # Build customer objects (id, name, email) for response
+  candidates = []
+  candidate_ids.keys.first(20).each do |cid|
+    begin
+      c = Stripe::Customer.retrieve(cid)
+      candidates << {
+        id: c.id,
+        name: (c.respond_to?(:name) ? c.name : nil),
+        email: (c.respond_to?(:email) ? c.email : nil)
+      }
+    rescue Stripe::StripeError => e
+      # skip retrieval errors
+    end
+  end
+
+  return candidates
+end
+
+post '/api/customers/candidates_by_payment_method' do
+  begin
+    req = JSON.parse(request.body.read) rescue {}
+    pm_id = req['payment_method_id'] || req['payment_method'] || req['pm']
+    if pm_id.nil? || pm_id.to_s.empty?
+      status 400
+      return({ error: 'payment_method_id is required' }.to_json)
+    end
+
+    fingerprint = extract_fingerprint_from_payment_method(pm_id)
+    if fingerprint.nil?
+      status 404
+      return({ error: 'Fingerprint not found on payment method' }.to_json)
+    end
+
+    candidates = find_customer_candidates_by_fingerprint(fingerprint)
+    status 200
+    content_type :json
+    return({ fingerprint: fingerprint, candidates: candidates }.to_json)
+  rescue => e
+    status 400
+    return({ error: e.message }.to_json)
+  end
+end
+
 def generate_random_camera_metadata(preferred_brand = nil)
   areas = ["Tokyo", "Osaka", "Yokohama", "Nagoya", "Sapporo", "Fukuoka"]
   floors = ["B1F", "1F", "2F", "3F", "4F", "5F"]
