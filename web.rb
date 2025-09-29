@@ -364,11 +364,7 @@ get '/api/customers/:id' do
   return customer.to_json
 end
 
-post '/api/customers/:id/payment_intent' do
-  req = JSON.parse(request.body.read)
-  amount = req['amount']
-
-  # Generate randomized, camera-focused metadata
+def generate_random_camera_metadata
   areas = ["Tokyo", "Osaka", "Yokohama", "Nagoya", "Sapporo", "Fukuoka"]
   shops = ["shinjuku", "shibuya", "ikebukuro", "umeda", "sakae", "tenjin"]
   floors = ["B1F", "1F", "2F", "3F", "4F", "5F"]
@@ -420,7 +416,6 @@ post '/api/customers/:id/payment_intent' do
   sub_category = category_options[category].sample
   sku = "SKU-#{SecureRandom.hex(2).upcase}-#{SecureRandom.hex(2).upcase}"
 
-  # Derive product name based on category
   product_name_core = case category
     when "Camera"
       (camera_models_by_brand[brand] || ["Mirrorless Camera"]).sample
@@ -428,7 +423,7 @@ post '/api/customers/:id/payment_intent' do
       (lenses_by_brand[brand] || ["50mm F1.8"]).sample
     when "Film"
       film = film_names.sample
-      brand = film.split.first # Align brand with film brand (e.g., Kodak, Fujifilm, Ilford)
+      brand = film.split.first
       film
     when "Accessory"
       accessories.sample
@@ -442,24 +437,32 @@ post '/api/customers/:id/payment_intent' do
   film_name_value = film_names.sample
   accessory_name_value = accessories.sample
 
+  return {
+    shop_id: shops.sample,
+    area: areas.sample,
+    sku: sku,
+    floor: floors.sample,
+    category: category,
+    sub_category: sub_category,
+    brand: brand,
+    product_name: product_name,
+    product_description: product_description,
+    product_image: image_url,
+    film_name: film_name_value,
+    accessory_name: accessory_name_value,
+  }
+end
+
+post '/api/customers/:id/payment_intent' do
+  req = JSON.parse(request.body.read)
+  amount = req['amount']
+  metadata = generate_random_camera_metadata
+
   payment_intent = Stripe::PaymentIntent.create(
     amount: amount,
     currency: 'jpy',
     customer: params[:id],
-    metadata: {
-      shop_id: shops.sample,
-      area: areas.sample,
-      sku: sku,
-      floor: floors.sample,
-      category: category,
-      sub_category: sub_category,
-      brand: brand,
-      product_name: product_name,
-      product_description: product_description,
-      product_image: image_url,
-      film_name: film_name_value,
-      accessory_name: accessory_name_value,
-    }
+    metadata: metadata,
   )
 
   {
@@ -654,12 +657,15 @@ post '/api/terminal/:id/payment_intent' do
   customer = req['customer']
   amount = req['amount']
 
+  metadata = generate_random_camera_metadata
+
   intent = Stripe::PaymentIntent.create({
     currency: 'jpy',
     customer: customer,
     payment_method_types: ['card_present'],
     amount: amount,
     setup_future_usage: "off_session",
+    metadata: metadata,
   })
 
   process = Stripe::Terminal::Reader.process_payment_intent(params[:id], {payment_intent: intent.id, process_config: {allow_redisplay: 'always'}})
