@@ -213,57 +213,32 @@ export default function Customer(prop) {
     });
   }
 
-  const refundPaymentIntent = async (piId) => {
-    if (!selectedTerminal) {
-      alert('Terminal not selected. Please select a terminal first.');
-      return;
-    }
-
+  const refundPayment = async (pi) => {
     try {
-      const body = { payment_intent: piId };
+      const isConfirmed = window.confirm(`この支払いを返金しますか？\nPI: ${pi.id}\n金額: ${pi.currency?.toLowerCase() === 'jpy' ? `¥${Number(pi.amount).toLocaleString('ja-JP')}` : `$${pi.amount}`} ${pi.currency?.toUpperCase()}`);
+      if (!isConfirmed) return;
 
-      const res = await fetch(`${API_URL}/api/terminal/${selectedTerminal}/refund_payment`, {
+      const resp = await fetch(`${API_URL}/api/refunds`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
+        body: JSON.stringify({ payment_intent: pi.id, confirm: true })
       });
-
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({ error: 'Unknown error' }));
-        console.error('Refund failed', err);
+      if (!resp.ok) {
+        const err = await resp.json().catch(() => ({ error: 'Unknown error' }));
+        alert(`返金に失敗しました: ${err.error || resp.statusText}`);
         return;
       }
-
-      // Refresh list after a short delay to reflect refund status
-      setTimeout(() => {
-        getPaymentIntents();
-      }, 2000);
+      const refund = await resp.json();
+      alert(`返金を作成しました: ${refund.id}`);
+      getPaymentIntents();
     } catch (e) {
-      console.error('Refund error', e);
+      alert(`返金エラー: ${e.message}`);
     }
   }
 
-  const onlineRefundPaymentIntent = async (piId) => {
-    try {
-      const res = await fetch(`${API_URL}/api/refunds`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ payment_intent: piId }),
-      });
+  // Terminal refund removed
 
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({ error: 'Unknown error' }));
-        console.error('Online refund failed', err);
-        return;
-      }
-
-      setTimeout(() => {
-        getPaymentIntents();
-      }, 1500);
-    } catch (e) {
-      console.error('Online refund error', e);
-    }
-  }
+  // Unused: replaced by refundPayment (with confirmation)
 
   let collect = async (e) => {
     e.preventDefault();
@@ -376,6 +351,20 @@ export default function Customer(prop) {
         return 'stripe-badge-error';
       default:
         return 'stripe-badge-info';
+    }
+  }
+
+  const getRefundInfo = (pi) => {
+    try {
+      const charges = pi.charges && pi.charges.data ? pi.charges.data : [];
+      if (charges.length === 0) return { refunded: 0, status: 'none' };
+      const totalAmount = charges.reduce((sum, c) => sum + (c.amount || 0), 0);
+      const refundedAmount = charges.reduce((sum, c) => sum + (c.amount_refunded || 0), 0);
+      if (refundedAmount <= 0) return { refunded: 0, status: 'none' };
+      if (refundedAmount >= totalAmount) return { refunded: refundedAmount, status: 'refunded' };
+      return { refunded: refundedAmount, status: 'partially_refunded' };
+    } catch (e) {
+      return { refunded: 0, status: 'none' };
     }
   }
 
@@ -582,18 +571,9 @@ export default function Customer(prop) {
                                   <button
                                     className="stripe-button stripe-button-secondary"
                                     style={{ fontSize: '12px', padding: '4px 8px' }}
-                                    onClick={() => onlineRefundPaymentIntent(pi.id)}
+                                    onClick={() => refundPayment(pi)}
                                   >
-                                    Online Refund
-                                  </button>
-                                )}
-                                {(methodType === 'card_present' || methodType === 'interac_present') && (
-                                  <button
-                                    className="stripe-button stripe-button-secondary"
-                                    style={{ fontSize: '12px', padding: '4px 8px' }}
-                                    onClick={() => refundPaymentIntent(pi.id)}
-                                  >
-                                    Terminal Refund
+                                    Refund
                                   </button>
                                 )}
                               </>
@@ -646,6 +626,17 @@ export default function Customer(prop) {
                             })}
                         </div>
                       )}
+
+                          {/* Refund action */}
+                          <div className="stripe-flex stripe-justify-end" style={{ marginTop: '6px' }}>
+                            <button
+                              className="stripe-button stripe-button-secondary"
+                              style={{ fontSize: '12px', padding: '4px 8px' }}
+                              onClick={() => refundPayment(pi)}
+                            >
+                              Refund
+                            </button>
+                          </div>
                     </div>
                   </div>
                 ))}

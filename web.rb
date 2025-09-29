@@ -568,7 +568,11 @@ post '/api/customers/:id/portal_session' do
 end
 
 get '/api/customers/:id/payment_intents' do
-  pis = Stripe::PaymentIntent.list({limit: 10, customer: params[:id]})
+  pis = Stripe::PaymentIntent.list({
+    limit: 10,
+    customer: params[:id],
+    expand: ['data.charges.data.refunds']
+  })
 
   return pis.to_json
 end
@@ -739,42 +743,6 @@ post '/api/terminal/:id/payment_intent' do
   return process.to_json
 end
 
-# This endpoint initiates a refund on a Terminal reader
-# https://docs.stripe.com/api/terminal/readers/refund_payment
-post '/api/terminal/:id/refund_payment' do
-  begin
-    req = JSON.parse(request.body.read) rescue {}
-
-    refund_params = {}
-    if req['payment_intent']
-      refund_params[:payment_intent] = req['payment_intent']
-    elsif req['charge']
-      refund_params[:charge] = req['charge']
-    end
-    if req['amount']
-      refund_params[:amount] = req['amount'].to_i
-    end
-
-    if refund_params.empty?
-      status 400
-      return({ error: 'payment_intent or charge is required' }.to_json)
-    end
-
-    reader = Stripe::Terminal::Reader.refund_payment(
-      params[:id],
-      refund_params
-    )
-
-  rescue Stripe::StripeError => e
-    status 402
-    return log_info("Error initiating refund on reader! #{e.message}")
-  end
-
-  log_info("Refund initiated on reader: #{params[:id]}")
-  status 200
-  return reader.to_json
-end
-
 # This endpoint performs an online refund (non-terminal) for a PaymentIntent or Charge
 post '/api/refunds' do
   begin
@@ -792,6 +760,12 @@ post '/api/refunds' do
 
     if req['amount']
       refund_params[:amount] = req['amount'].to_i
+    end
+
+    # Require explicit confirmation to execute the refund
+    unless req['confirm'] == true
+      status 400
+      return({ error: 'Confirmation required. Pass {"confirm": true} to execute refund.', params: refund_params }.to_json)
     end
 
     refund = Stripe::Refund.create(refund_params)
