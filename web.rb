@@ -518,13 +518,27 @@ post '/api/customers/candidates_by_payment_method' do
       return({ error: 'payment_method_id is required' }.to_json)
     end
 
-    fingerprint = extract_fingerprint_from_payment_method(pm_id)
+    # Retrieve the payment method to identify its attached customer (if any)
+    attached_customer_id = nil
+    begin
+      pm_obj = Stripe::PaymentMethod.retrieve(pm_id)
+      attached_customer_id = (pm_obj.respond_to?(:customer) ? pm_obj.customer : nil)
+    rescue Stripe::StripeError => e
+      # proceed without attached_customer_id
+    end
+
+    fingerprint = extract_fingerprint_from_payment_method(pm_obj || pm_id)
     if fingerprint.nil?
       status 404
       return({ error: 'Fingerprint not found on payment method' }.to_json)
     end
 
     candidates = find_customer_candidates_by_fingerprint(fingerprint)
+    # Exclude origin customer from results
+    exclude_id = req['exclude_customer_id'] || attached_customer_id
+    if exclude_id && !exclude_id.to_s.empty?
+      candidates = candidates.reject { |c| c[:id] == exclude_id }
+    end
     status 200
     content_type :json
     return({ fingerprint: fingerprint, candidates: candidates }.to_json)
