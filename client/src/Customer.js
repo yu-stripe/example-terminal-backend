@@ -341,16 +341,20 @@ export default function Customer(prop) {
     });
   }
 
-  const getStatusBadge = (status) => {
-    switch(status) {
+  const getStatusBadge = (pi) => {
+    const refundState = getRefundInfo(pi).status;
+    if (refundState === 'refunded') {
+      return { className: 'stripe-badge-success', label: '返金済み' };
+    }
+    switch(pi.status) {
       case 'succeeded':
-        return 'stripe-badge-success';
+        return { className: 'stripe-badge-success', label: '支払い済み' };
       case 'processing':
-        return 'stripe-badge-warning';
+        return { className: 'stripe-badge-warning', label: '支払い中' };
       case 'requires_payment_method':
-        return 'stripe-badge-error';
+        return { className: 'stripe-badge-error', label: '支払い方法なし' };
       default:
-        return 'stripe-badge-info';
+        return { className: 'stripe-badge-info', label: pi.status };
     }
   }
 
@@ -572,23 +576,19 @@ export default function Customer(prop) {
                           {pi?.currency?.toLowerCase() === 'jpy' ? `¥${Number(pi.amount).toLocaleString('ja-JP')}` : `$${pi.amount}`} {pi.currency.toUpperCase()}
                         </span>
                         <div className="stripe-flex stripe-items-center" style={{ gap: '8px' }}>
-                          <div className={`stripe-badge ${getStatusBadge(pi.status)}`}>
-                            {pi.status}
-                          </div>
                           {(() => {
-                            const info = getRefundInfo(pi);
-                            if (info.status === 'refunded') {
-                              return <div className="stripe-badge stripe-badge-success">refunded</div>;
-                            }
-                            if (info.status === 'partially_refunded') {
-                              return <div className="stripe-badge stripe-badge-warning">partially refunded</div>;
-                            }
-                            return null;
+                            const s = getStatusBadge(pi);
+                            return (
+                              <div className={`stripe-badge ${s.className}`}>
+                                {s.label}
+                              </div>
+                            );
                           })()}
                           {(() => {
                             const methodType = Array.isArray(pi.payment_method_types) ? pi.payment_method_types[0] : undefined;
                             if (pi.status !== 'succeeded') return null;
                             const refundState = getRefundInfo(pi).status;
+                            if (refundState === 'refunded') return null;
                             return (
                               <>
                                 {(methodType === 'card' || methodType === 'card_present') && (
@@ -596,7 +596,6 @@ export default function Customer(prop) {
                                     className="stripe-button stripe-button-secondary"
                                     style={{ fontSize: '12px', padding: '4px 8px' }}
                                     onClick={() => refundPayment(pi)}
-                                    disabled={refundState === 'refunded'}
                                   >
                                     Refund
                                   </button>
@@ -653,15 +652,24 @@ export default function Customer(prop) {
                       )}
 
                           {/* Refund action */}
-                          <div className="stripe-flex stripe-justify-end" style={{ marginTop: '6px' }}>
-                            <button
-                              className="stripe-button stripe-button-secondary"
-                              style={{ fontSize: '12px', padding: '4px 8px' }}
-                              onClick={() => refundPayment(pi)}
-                            >
-                              Refund
-                            </button>
-                          </div>
+                          {(() => {
+                            const methodType = Array.isArray(pi.payment_method_types) ? pi.payment_method_types[0] : undefined;
+                            const refundState = getRefundInfo(pi).status;
+                            if (pi.status !== 'succeeded') return null;
+                            if (refundState === 'refunded') return null;
+                            if (!(methodType === 'card' || methodType === 'card_present')) return null;
+                            return (
+                              <div className="stripe-flex stripe-justify-end" style={{ marginTop: '6px' }}>
+                                <button
+                                  className="stripe-button stripe-button-secondary"
+                                  style={{ fontSize: '12px', padding: '4px 8px' }}
+                                  onClick={() => refundPayment(pi)}
+                                >
+                                  Refund
+                                </button>
+                              </div>
+                            );
+                          })()}
                     </div>
                   </div>
                 ))}
