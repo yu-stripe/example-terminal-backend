@@ -366,7 +366,6 @@ end
 
 def generate_random_camera_metadata
   areas = ["Tokyo", "Osaka", "Yokohama", "Nagoya", "Sapporo", "Fukuoka"]
-  shops = ["shinjuku", "shibuya", "ikebukuro", "umeda", "sakae", "tenjin"]
   floors = ["B1F", "1F", "2F", "3F", "4F", "5F"]
 
   category_options = {
@@ -438,7 +437,6 @@ def generate_random_camera_metadata
   accessory_name_value = accessories.sample
 
   return {
-    shop_id: shops.sample,
     area: areas.sample,
     sku: sku,
     floor: floors.sample,
