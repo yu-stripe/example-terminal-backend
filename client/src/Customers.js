@@ -3,11 +3,15 @@ import { Link } from 'react-router-dom';
 import { API_URL } from './index.js'
 import { useNavigate } from "react-router-dom";
 import TerminalStatusBar from './components/TerminalStatusBar';
+import PosTerminalCard from './components/PosTerminalCard';
+import { useTerminal } from './context/TerminalContext';
 import './stripe-theme.css';
 
 export default function Customers() {
   const navigate = useNavigate();
   const [customers, setCustomers] = useState([]);
+  const [amount, setAmount] = useState(0);
+  const { selectedTerminal } = useTerminal();
   const [creating, setCreating] = useState(false);
 
   useEffect(() => {
@@ -23,6 +27,70 @@ export default function Customers() {
 
   const goHome = () => {
     navigate('/')
+  }
+
+  const collectGuest = async (e) => {
+    e.preventDefault();
+    if (!selectedTerminal) {
+      alert('Terminal not selected. Please select a terminal first.');
+      return;
+    }
+    try {
+      const syncResponse = await fetch(`${API_URL}/api/terminal/select`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reader_id: selectedTerminal }),
+      });
+      if (!syncResponse.ok) {
+        throw new Error('Failed to sync terminal selection with server');
+      }
+
+      const response = await fetch(`${API_URL}/api/terminal/${selectedTerminal}/payment_intent`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ amount: amount })
+      });
+      if (response.ok) {
+        const res = await response.json();
+        const piId = res && (res.payment_intent_id || res.intent_id || res.id);
+        if (piId) {
+          navigate(`/payment_intents/${piId}`);
+        } else {
+          alert('ゲスト決済の支払いフローを開始しました');
+        }
+      } else {
+        const err = await response.json().catch(() => ({ error: 'Unknown error' }));
+        alert(`決済開始に失敗しました: ${err.error || response.statusText}`);
+      }
+    } catch (error) {
+      alert(`Error: ${error.message}`);
+    }
+  }
+
+  const cannel = async () => {
+    if (!selectedTerminal) {
+      alert('Terminal not selected. Please select a terminal first.');
+      return;
+    }
+    try {
+      const syncResponse = await fetch(`${API_URL}/api/terminal/select`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reader_id: selectedTerminal }),
+      });
+      if (!syncResponse.ok) {
+        throw new Error('Failed to sync terminal selection with server');
+      }
+      const response = await fetch(`${API_URL}/api/terminal/${selectedTerminal}/cannel`, { method: 'POST' });
+      if (response.ok) {
+        alert('Action cancelled successfully');
+      } else {
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        alert(`Error: ${errorData.error || 'Failed to cancel action'}`);
+      }
+    } catch (error) {
+      alert(`Error: ${error.message}`);
+    }
   }
 
   const createNewCustomer = async () => {
@@ -96,6 +164,16 @@ export default function Customers() {
                 {creating ? '作成中…' : '新規カスタマー作成'}
               </button>
             </div>
+          </div>
+
+          {/* Guest POS Terminal */}
+          <div className="stripe-grid stripe-grid-1 stripe-mb-6">
+            <PosTerminalCard
+              amount={amount}
+              setAmount={setAmount}
+              onSubmitCollect={collectGuest}
+              onCancel={cannel}
+            />
           </div>
 
           {customers.length === 0 ? (

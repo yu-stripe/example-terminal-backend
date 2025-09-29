@@ -4,6 +4,10 @@ import { Link } from 'react-router-dom';
 import TimeFormatter from "./TimeFormatter"
 import { API_URL } from './index.js'
 import QRCode from "react-qr-code";
+import PosTerminalCard from './components/PosTerminalCard';
+import QrPaymentCard from './components/QrPaymentCard';
+import OnlinePaymentCard from './components/OnlinePaymentCard';
+import PaymentIntentsCard from './components/PaymentIntentsCard';
 import { useTerminal } from './context/TerminalContext';
 import TerminalStatusBar from './components/TerminalStatusBar';
 import './stripe-theme.css';
@@ -696,111 +700,12 @@ export default function Customer(prop) {
             </div>
           </div>
 
-          {/* Recent Payments */}
-          <div className="stripe-card stripe-mt-6">
-            <div className="stripe-card-header">
-              <h3 className="stripe-card-title">直近の支払い (Recent Payments)</h3>
-            </div>
-            
-            {paymentIntents && paymentIntents.data && paymentIntents.data.length > 0 ? (
-              <div className="stripe-list">
-                {paymentIntents.data.map((pi, index) => (
-                  <div key={index} className="stripe-list-item">
-                    <div className="stripe-flex stripe-flex-col" style={{ width: '100%', gap: '6px' }}>
-                      {/* 1行目: 金額 / ステータス */}
-                      <div className="stripe-flex stripe-justify-between stripe-items-center">
-                        <div className="stripe-flex stripe-items-center" style={{ gap: '8px', alignItems: 'baseline' }}>
-                          <span className="stripe-text" style={{ fontWeight: '600', whiteSpace: 'nowrap' }}>
-                            {pi?.currency?.toLowerCase() === 'jpy' ? `¥${Number(pi.amount).toLocaleString('ja-JP')}` : `$${pi.amount}`} {pi.currency.toUpperCase()}
-                          </span>
-                          {(() => {
-                            const s = getStatusBadge(pi);
-                            return (
-                              <div className={`stripe-badge ${s.className}`}>
-                                {s.label}
-                              </div>
-                            );
-                          })()}
-                        </div>
-                        <div className="stripe-flex stripe-items-center" style={{ gap: '8px' }}>
-                          {(() => {
-                            const methodType = Array.isArray(pi.payment_method_types) ? pi.payment_method_types[0] : undefined;
-                            if (pi.status !== 'succeeded') return null;
-                            const refundState = getRefundInfo(pi).status;
-                            if (refundState === 'refunded') return null;
-                            return (
-                              <>
-                                {(methodType === 'card' || methodType === 'card_present') && (
-                                  <button
-                                    className="stripe-button stripe-button-secondary"
-                                    style={{ fontSize: '12px', padding: '4px 8px' }}
-                                    onClick={() => refundPayment(pi)}
-                                  >
-                                    Refund
-                                  </button>
-                                )}
-                              </>
-                            );
-                          })()}
-                        </div>
-                      </div>
-
-                      {/* 2行目: 日付 / 店頭|オンライン */}
-                      <div className="stripe-flex stripe-justify-between stripe-items-center">
-                        <span className="stripe-text">
-                          <TimeFormatter timestamp={pi.created}></TimeFormatter>
-                        </span>
-                        <span className="stripe-badge stripe-badge-info" style={{ whiteSpace: 'nowrap' }}>
-                          {(pi.payment_method_types[0] === 'card') ? 'オンライン' : '店頭'}
-                        </span>
-                      </div>
-
-                    {/* 3行目: 説明 */}
-                    {pi.description && (
-                      <div className="stripe-text stripe-text-sm" style={{ marginTop: '2px', color: 'var(--stripe-gray-600)' }}>
-                        {pi.description}
-                      </div>
-                    )}
-
-                    {/* 4行目(任意): タグ */}
-                      {pi.metadata && Object.keys(pi.metadata).length > 0 && (
-                        <div className="stripe-flex stripe-flex-wrap" style={{ marginTop: '2px', gap: '4px' }}>
-                          {Object.entries(pi.metadata)
-                            .filter(([key, value]) => value && key !== 'product_image')
-                            .map(([key, value], i) => {
-                              const c = colorForId(key);
-                              return (
-                                <span
-                                  key={`${key}-${i}`}
-                                  className="stripe-badge"
-                                  style={{
-                                    backgroundColor: c.bg,
-                                    borderColor: c.border,
-                                    color: c.text,
-                                    fontSize: '10px',
-                                    padding: '2px 6px',
-                                    lineHeight: 1.2,
-                                    borderRadius: '8px',
-                                  }}
-                                >
-                                  {String(value)}
-                                </span>
-                              );
-                            })}
-                        </div>
-                      )}
-
-                          
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="stripe-text stripe-text-sm" style={{ textAlign: 'center', color: 'var(--stripe-gray-400)' }}>
-                No recent payments
-              </div>
-            )}
-          </div>
+          <PaymentIntentsCard
+            paymentIntents={paymentIntents}
+            onRefund={refundPayment}
+            getStatusBadge={getStatusBadge}
+            getRefundInfo={getRefundInfo}
+          />
 
           
 
@@ -880,136 +785,24 @@ export default function Customer(prop) {
 
           {/* Payment Actions */}
           <div className="stripe-grid stripe-grid-3 stripe-mt-6">
-            {/* POS Terminal */}
-            <div className="stripe-card">
-              <div className="stripe-card-header">
-                <h3 className="stripe-card-title">POS Terminal</h3>
-                <p className="stripe-card-subtitle">Process in-person payment</p>
-              </div>
-              
-              <form onSubmit={collect} className="stripe-flex stripe-flex-col stripe-gap-4">
-                <div>
-                  <label className="stripe-text" style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
-                    請求金額 (Amount JPY)
-                  </label>
-                  <input
-                    value={amount}
-                    onChange={(event) => { setAmount(event.target.value)}}
-                    type="number"
-                    placeholder="JPY"
-                    style={{
-                      width: '100%',
-                      padding: '12px',
-                      border: '1px solid var(--stripe-gray-300)',
-                      borderRadius: 'var(--radius-md)',
-                      fontSize: '14px',
-                      fontFamily: 'var(--font-family-primary)'
-                    }}
-                  />
-                  <div className="stripe-text-sm" style={{ marginTop: '4px' }}>
-                    POSにてこのお客様に請求されます
-                  </div>
-                </div>
-                
-                <div className="stripe-flex stripe-gap-2">
-                  <button type="submit" className="stripe-button stripe-button-primary">
-                    請求 (Charge)
-                  </button>
-                  <button type="button" onClick={cannel} className="stripe-button stripe-button-secondary">
-                    Cancel
-                  </button>
-                </div>
-              </form>
-            </div>
-
-            {/* QR Code Payment */}
-            <div className="stripe-card">
-              <div className="stripe-card-header">
-                <h3 className="stripe-card-title">QR Payment</h3>
-                <p className="stripe-card-subtitle">Generate QR for POS</p>
-              </div>
-              
-              <div className="stripe-flex stripe-flex-col stripe-gap-4">
-                {piCust && (
-                  <div style={{ textAlign: 'center', padding: '16px', backgroundColor: 'var(--stripe-gray-50)', borderRadius: 'var(--radius-md)' }}>
-                    <QRCode value={piCust} size={120} />
-                  </div>
-                )}
-                
-                <div>
-                  <label className="stripe-text" style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
-                    請求金額 (Amount JPY)
-                  </label>
-                  <input
-                    value={amount}
-                    onChange={(event) => { setAmount(event.target.value)}}
-                    type="number"
-                    placeholder="JPY"
-                    style={{
-                      width: '100%',
-                      padding: '12px',
-                      border: '1px solid var(--stripe-gray-300)',
-                      borderRadius: 'var(--radius-md)',
-                      fontSize: '14px',
-                      fontFamily: 'var(--font-family-primary)'
-                    }}
-                  />
-                  <div className="stripe-text-sm" style={{ marginTop: '4px' }}>
-                    QRにてこのお客様に請求されます
-                  </div>
-                </div>
-                
-                <button onClick={createPaymentIntentQR} className="stripe-button stripe-button-primary">
-                  Generate QR
-                </button>
-              </div>
-            </div>
-
-            {/* Online Payment */}
-            <div className="stripe-card">
-              <div className="stripe-card-header">
-                <h3 className="stripe-card-title">Online Payment</h3>
-                <p className="stripe-card-subtitle">Create payment intent</p>
-              </div>
-              
-              <div className="stripe-flex stripe-flex-col stripe-gap-4">
-                {checkoutUrl && (
-                  <div style={{ textAlign: 'center', padding: '16px', backgroundColor: 'var(--stripe-gray-50)', borderRadius: 'var(--radius-md)' }}>
-                    <QRCode value={checkoutUrl} size={140} />
-                    <div className="stripe-text-sm" style={{ marginTop: '8px', wordBreak: 'break-all' }}>
-                      <a href={checkoutUrl} target="_blank" rel="noopener noreferrer">{checkoutUrl}</a>
-                    </div>
-                  </div>
-                )}
-                
-                <div>
-                  <label className="stripe-text" style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
-                    請求金額 (Amount JPY)
-                  </label>
-                  <input
-                    value={amount}
-                    onChange={(event) => { setAmount(event.target.value)}}
-                    type="number"
-                    placeholder="JPY"
-                    style={{
-                      width: '100%',
-                      padding: '12px',
-                      border: '1px solid var(--stripe-gray-300)',
-                      borderRadius: 'var(--radius-md)',
-                      fontSize: '14px',
-                      fontFamily: 'var(--font-family-primary)'
-                    }}
-                  />
-                  <div className="stripe-text-sm" style={{ marginTop: '4px' }}>
-                    オンライン決済用のQRコードを生成
-                  </div>
-                </div>
-                
-                <button onClick={createCheckoutSession} className="stripe-button stripe-button-primary">
-                  Create Online Payment
-                </button>
-              </div>
-            </div>
+            <PosTerminalCard
+              amount={amount}
+              setAmount={setAmount}
+              onSubmitCollect={collect}
+              onCancel={cannel}
+            />
+            <QrPaymentCard
+              amount={amount}
+              setAmount={setAmount}
+              piCust={piCust}
+              onGenerate={createPaymentIntentQR}
+            />
+            <OnlinePaymentCard
+              amount={amount}
+              setAmount={setAmount}
+              checkoutUrl={checkoutUrl}
+              onCreate={createCheckoutSession}
+            />
           </div>
         </div>
       </main>

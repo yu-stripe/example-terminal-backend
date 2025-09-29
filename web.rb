@@ -513,21 +513,25 @@ post '/api/customers/candidates_by_payment_method' do
   begin
     req = JSON.parse(request.body.read) rescue {}
     pm_id = req['payment_method_id'] || req['payment_method'] || req['pm']
-    if pm_id.nil? || pm_id.to_s.empty?
+    raw_fingerprint = req['fingerprint']
+    if (pm_id.nil? || pm_id.to_s.empty?) && (raw_fingerprint.nil? || raw_fingerprint.to_s.empty?)
       status 400
-      return({ error: 'payment_method_id is required' }.to_json)
+      return({ error: 'payment_method_id or fingerprint is required' }.to_json)
     end
 
     # Retrieve the payment method to identify its attached customer (if any)
     attached_customer_id = nil
-    begin
-      pm_obj = Stripe::PaymentMethod.retrieve(pm_id)
-      attached_customer_id = (pm_obj.respond_to?(:customer) ? pm_obj.customer : nil)
-    rescue Stripe::StripeError => e
-      # proceed without attached_customer_id
+    pm_obj = nil
+    if pm_id && !pm_id.to_s.empty?
+      begin
+        pm_obj = Stripe::PaymentMethod.retrieve(pm_id)
+        attached_customer_id = (pm_obj.respond_to?(:customer) ? pm_obj.customer : nil)
+      rescue Stripe::StripeError => e
+        # proceed without attached_customer_id
+      end
     end
 
-    fingerprint = extract_fingerprint_from_payment_method(pm_obj || pm_id)
+    fingerprint = raw_fingerprint || extract_fingerprint_from_payment_method(pm_obj || pm_id)
     if fingerprint.nil?
       status 404
       return({ error: 'Fingerprint not found on payment method' }.to_json)
@@ -742,7 +746,12 @@ get '/api/customers/:id/payment_intents' do
 end
 
 get '/api/payment_intents/:id' do
-  pi = Stripe::PaymentIntent.retrieve(params[:id])
+  begin
+    pi = Stripe::PaymentIntent.retrieve(params[:id], { expand: ['latest_charge', 'payment_method'] })
+  rescue Stripe::StripeError => e
+    status 402
+    return({ error: e.message }.to_json)
+  end
 
   return pi.to_json
 end
@@ -983,7 +992,8 @@ post '/api/terminal/:id/payment_intent' do
   update_customer_metadata_with_brand_label(customer, metadata)
 
   process = Stripe::Terminal::Reader.process_payment_intent(params[:id], {payment_intent: intent.id, process_config: {allow_redisplay: 'always'}})
-  return process.to_json
+  content_type :json
+  return({ payment_intent_id: intent.id, process: process }).to_json
 end
 
 # This endpoint performs an online refund (non-terminal) for a PaymentIntent or Charge
