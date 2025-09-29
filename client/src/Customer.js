@@ -469,6 +469,16 @@ export default function Customer(prop) {
                       <div className="stripe-list-item-subtitle">
                         {(pi.payment_method_types[0] === 'card') ? "オンライン" : "対面"}
                       </div>
+                      {pi.metadata && Object.keys(pi.metadata).length > 0 && (
+                        <div className="stripe-text stripe-text-xs" style={{ marginTop: '6px', color: 'var(--stripe-gray-600)' }}>
+                          {Object.entries(pi.metadata).map(([key, value]) => (
+                            <div key={key} className="stripe-flex stripe-gap-2" style={{ lineHeight: '1.3' }}>
+                              <span style={{ fontFamily: 'var(--font-family-mono)' }}>{key}:</span>
+                              <span style={{ fontFamily: 'var(--font-family-mono)' }}>{String(value)}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                     <div className="stripe-flex stripe-items-center stripe-gap-3">
                       <span className="stripe-text" style={{ fontWeight: '500' }}>
