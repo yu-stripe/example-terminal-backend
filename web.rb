@@ -429,7 +429,6 @@ def generate_random_camera_metadata(preferred_brand = nil)
 
   brand = preferred_brand || brands.sample
   category = category_options.keys.sample
-  sub_category = category_options[category].sample
   sku = "SKU-#{SecureRandom.hex(2).upcase}-#{SecureRandom.hex(2).upcase}"
 
   product_name_core = case category
@@ -456,7 +455,7 @@ def generate_random_camera_metadata(preferred_brand = nil)
   end
 
   product_name = brand ? "#{brand} #{product_name_core}" : product_name_core
-  product_description = "#{product_name} (#{sub_category})"
+  product_description = product_name
   image_url = "https://picsum.photos/seed/#{sku}/300/300"
   film_name_value = film_names.sample
   accessory_name_value = accessories.sample
@@ -466,7 +465,6 @@ def generate_random_camera_metadata(preferred_brand = nil)
     sku: sku,
     floor: floors.sample,
     category: category,
-    sub_category: sub_category,
     brand: brand,
     product_name: product_name,
     product_description: product_description,
