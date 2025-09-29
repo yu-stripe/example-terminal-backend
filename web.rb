@@ -748,6 +748,36 @@ post '/api/terminal/:id/refund_payment' do
   return reader.to_json
 end
 
+# This endpoint performs an online refund (non-terminal) for a PaymentIntent or Charge
+post '/api/refunds' do
+  begin
+    req = JSON.parse(request.body.read) rescue {}
+
+    refund_params = {}
+    if req['payment_intent']
+      refund_params[:payment_intent] = req['payment_intent']
+    elsif req['charge']
+      refund_params[:charge] = req['charge']
+    else
+      status 400
+      return({ error: 'payment_intent or charge is required' }.to_json)
+    end
+
+    if req['amount']
+      refund_params[:amount] = req['amount'].to_i
+    end
+
+    refund = Stripe::Refund.create(refund_params)
+  rescue Stripe::StripeError => e
+    status 402
+    return log_info("Error creating refund! #{e.message}")
+  end
+
+  log_info("Refund created: #{refund.id}")
+  status 200
+  return refund.to_json
+end
+
 # This endpoint initiates collecting email input from the terminal reader
 # https://docs.stripe.com/terminal/features/collect-inputs
 post '/api/terminal/:id/collect_email' do

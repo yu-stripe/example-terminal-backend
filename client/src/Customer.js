@@ -243,6 +243,28 @@ export default function Customer(prop) {
     }
   }
 
+  const onlineRefundPaymentIntent = async (piId) => {
+    try {
+      const res = await fetch(`${API_URL}/api/refunds`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ payment_intent: piId }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: 'Unknown error' }));
+        console.error('Online refund failed', err);
+        return;
+      }
+
+      setTimeout(() => {
+        getPaymentIntents();
+      }, 1500);
+    } catch (e) {
+      console.error('Online refund error', e);
+    }
+  }
+
   let collect = async (e) => {
     e.preventDefault();
     if (!selectedTerminal) {
@@ -551,15 +573,32 @@ export default function Customer(prop) {
                           <div className={`stripe-badge ${getStatusBadge(pi.status)}`}>
                             {pi.status}
                           </div>
-                          {pi.status === 'succeeded' && (
-                            <button
-                              className="stripe-button stripe-button-secondary"
-                              style={{ fontSize: '12px', padding: '4px 8px' }}
-                              onClick={() => refundPaymentIntent(pi.id)}
-                            >
-                              Refund
-                            </button>
-                          )}
+                          {(() => {
+                            const methodType = Array.isArray(pi.payment_method_types) ? pi.payment_method_types[0] : undefined;
+                            if (pi.status !== 'succeeded') return null;
+                            return (
+                              <>
+                                {(methodType === 'card' || methodType === 'card_present') && (
+                                  <button
+                                    className="stripe-button stripe-button-secondary"
+                                    style={{ fontSize: '12px', padding: '4px 8px' }}
+                                    onClick={() => onlineRefundPaymentIntent(pi.id)}
+                                  >
+                                    Online Refund
+                                  </button>
+                                )}
+                                {(methodType === 'card_present' || methodType === 'interac_present') && (
+                                  <button
+                                    className="stripe-button stripe-button-secondary"
+                                    style={{ fontSize: '12px', padding: '4px 8px' }}
+                                    onClick={() => refundPaymentIntent(pi.id)}
+                                  >
+                                    Terminal Refund
+                                  </button>
+                                )}
+                              </>
+                            );
+                          })()}
                         </div>
                       </div>
 
