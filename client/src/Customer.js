@@ -754,25 +754,7 @@ export default function Customer(prop) {
                         </div>
                       )}
 
-                          {/* Refund action */}
-                          {(() => {
-                            const methodType = Array.isArray(pi.payment_method_types) ? pi.payment_method_types[0] : undefined;
-                            const refundState = getRefundInfo(pi).status;
-                            if (pi.status !== 'succeeded') return null;
-                            if (refundState === 'refunded') return null;
-                            if (!(methodType === 'card' || methodType === 'card_present')) return null;
-                            return (
-                              <div className="stripe-flex stripe-justify-end" style={{ marginTop: '6px' }}>
-                                <button
-                                  className="stripe-button stripe-button-secondary"
-                                  style={{ fontSize: '12px', padding: '4px 8px' }}
-                                  onClick={() => refundPayment(pi)}
-                                >
-                                  Refund
-                                </button>
-                              </div>
-                            );
-                          })()}
+                          
                     </div>
                   </div>
                 ))}
