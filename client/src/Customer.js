@@ -22,6 +22,24 @@ export default function Customer(prop) {
 
   const { selectedTerminal } = useTerminal();
 
+  const colorForId = (id) => {
+    try {
+      let hash = 0;
+      const s = String(id || '');
+      for (let i = 0; i < s.length; i++) {
+        hash = (hash * 31 + s.charCodeAt(i)) >>> 0;
+      }
+      const hue = hash % 360;
+      return {
+        bg: `hsla(${hue}, 80%, 45%, 0.18)`,
+        border: `hsla(${hue}, 80%, 45%, 0.5)`,
+        text: `hsl(${hue}, 80%, 35%)`,
+      };
+    } catch (e) {
+      return { bg: 'rgba(59,130,246,0.18)', border: 'rgba(59,130,246,0.5)', text: 'rgb(37,99,235)' };
+    }
+  };
+
   const tagCloud = useMemo(() => {
     const counts = new Map();
     const excludeKeys = new Set(['product_image', 'product_description']);
@@ -492,13 +510,25 @@ export default function Customer(prop) {
                         {(pi.payment_method_types[0] === 'card') ? "オンライン" : "対面"}
                       </div>
                       {pi.metadata && Object.keys(pi.metadata).length > 0 && (
-                        <div className="stripe-text stripe-text-xs" style={{ marginTop: '6px', color: 'var(--stripe-gray-600)' }}>
-                          {Object.entries(pi.metadata).map(([key, value]) => (
-                            <div key={key} className="stripe-flex stripe-gap-2" style={{ lineHeight: '1.3' }}>
-                              <span style={{ fontFamily: 'var(--font-family-mono)' }}>{key}:</span>
-                              <span style={{ fontFamily: 'var(--font-family-mono)' }}>{String(value)}</span>
-                            </div>
-                          ))}
+                        <div className="stripe-flex stripe-flex-wrap stripe-gap-2" style={{ marginTop: '6px' }}>
+                          {Object.entries(pi.metadata)
+                            .filter(([key, value]) => value && key !== 'product_image')
+                            .map(([key, value], i) => {
+                              const c = colorForId(pi.id || index);
+                              return (
+                                <span
+                                  key={`${key}-${i}`}
+                                  className="stripe-badge"
+                                  style={{
+                                    backgroundColor: c.bg,
+                                    borderColor: c.border,
+                                    color: c.text,
+                                  }}
+                                >
+                                  {String(value)}
+                                </span>
+                              );
+                            })}
                         </div>
                       )}
                     </div>
