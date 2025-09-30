@@ -747,7 +747,7 @@ end
 
 get '/api/payment_intents/:id' do
   begin
-    pi = Stripe::PaymentIntent.retrieve(params[:id], expand: ['latest_charge', 'payment_method']）
+    pi = Stripe::PaymentIntent.retrieve(id: params[:id], expand: ['payment_method', 'latest_charge'])
   rescue Stripe::StripeError => e
     status 402
     return({ error: e.message }.to_json)
