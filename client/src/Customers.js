@@ -146,7 +146,7 @@ export default function Customers() {
         </div>
       </header>
 
-      <TerminalStatusBar showFullStatus={false} />
+      <TerminalStatusBar showClearButton={true} />
 
       {/* Main Content */}
       <main className="stripe-main">

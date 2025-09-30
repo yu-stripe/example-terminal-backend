@@ -270,6 +270,28 @@ const TerminalSelector = ({ onTerminalSelected }) => {
                       </span>
                     </div>
                     
+                    {reader.label && (
+                      <div style={{ marginBottom: '10px' }}>
+                        <div style={{ fontWeight: '600', fontSize: '16px', color: '#333' }}>
+                          {reader.label}
+                        </div>
+                      </div>
+                    )}
+                    
+                    {reader.location && reader.location.display_name && (
+                      <div style={{ marginBottom: '15px' }}>
+                        <div style={{ 
+                          background: '#f8f9fa', 
+                          padding: '8px 12px', 
+                          borderRadius: '4px',
+                          fontSize: '14px',
+                          color: '#495057'
+                        }}>
+                          📍 {reader.location.display_name}
+                        </div>
+                      </div>
+                    )}
+                    
                     <div style={{ marginBottom: '15px' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
                         <span style={{ fontWeight: '500' }}>ID:</span>

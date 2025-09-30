@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { useTerminal } from '../context/TerminalContext';
 
 const TerminalStatusBar = ({ showFullStatus = true, showClearButton = false }) => {
-  const { selectedTerminal, loading, clearTerminal } = useTerminal();
+  const { selectedTerminal, terminalReader, loading, clearTerminal } = useTerminal();
 
   const handleClearTerminal = async () => {
     if (window.confirm('Are you sure you want to clear the selected terminal?')) {
@@ -18,6 +18,11 @@ const TerminalStatusBar = ({ showFullStatus = true, showClearButton = false }) =
   if (!selectedTerminal) {
     return (
       <div style={{ 
+        position: 'fixed',
+        top: '73px',
+        left: 0,
+        right: 0,
+        zIndex: 99,
         backgroundColor: 'var(--stripe-orange)', 
         color: 'white', 
         padding: showFullStatus ? 'var(--space-3)' : 'var(--space-2)', 
@@ -41,8 +46,16 @@ const TerminalStatusBar = ({ showFullStatus = true, showClearButton = false }) =
   }
 
   if (showFullStatus) {
+    const displayLabel = terminalReader?.label || selectedTerminal;
+    const displayLocation = terminalReader?.location?.display_name;
+    
     return (
       <div style={{ 
+        position: 'fixed',
+        top: '73px',
+        left: 0,
+        right: 0,
+        zIndex: 99,
         backgroundColor: 'var(--stripe-green)', 
         color: 'white', 
         padding: 'var(--space-2)', 
@@ -53,7 +66,10 @@ const TerminalStatusBar = ({ showFullStatus = true, showClearButton = false }) =
         justifyContent: 'center',
         gap: 'var(--space-3)'
       }}>
-        <span>✓ Terminal selected: {selectedTerminal}</span>
+        <span>
+          ✓ Terminal: <strong>{displayLabel}</strong>
+          {displayLocation && <> | 📍 {displayLocation}</>}
+        </span>
         {showClearButton && (
           <button
             onClick={handleClearTerminal}
