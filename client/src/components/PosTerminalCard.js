@@ -2,7 +2,7 @@ export default function PosTerminalCard({ amount, setAmount, onSubmitCollect, on
   return (
     <div className="stripe-card">
       <div className="stripe-card-header">
-        <h3 className="stripe-card-title">POS Terminal</h3>
+        <h3 className="stripe-card-title">対面決済</h3>
         <p className="stripe-card-subtitle">Process in-person payment</p>
       </div>
       <form onSubmit={onSubmitCollect} className="stripe-flex stripe-flex-col stripe-gap-4">
@@ -25,7 +25,7 @@ export default function PosTerminalCard({ amount, setAmount, onSubmitCollect, on
             }}
           />
           <div className="stripe-text-sm" style={{ marginTop: '4px' }}>
-            POSにてこのお客様に請求されます
+            Termianlにてこのお客様に請求されます
           </div>
         </div>
 
