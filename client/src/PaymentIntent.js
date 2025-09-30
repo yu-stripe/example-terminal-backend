@@ -144,7 +144,7 @@ export default function PaymentIntentPage() {
         alert(`移行に失敗しました: ${err.error || r.statusText}`);
         return;
       }
-      alert('PI を移行しました');
+      alert('支払いを対象のお客様に紐づけました');
       navigate(`/customers/${customerId}`);
     } catch (e) {
       alert(`エラー: ${e.message}`);
