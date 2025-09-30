@@ -886,7 +886,8 @@ get '/api/terminal/readers' do
         device_type: params[:device_type],
         location: params[:location],
         serial_number: params[:serial_number],
-        status: params[:status]
+        status: params[:status],
+        expand: ['data.location']
       }.compact
     )
   rescue Stripe::StripeError => e
@@ -979,7 +980,7 @@ post '/api/terminal/clear' do
 end
 
 get '/api/terminal/:id' do
-  return Stripe::Terminal::Reader.retrieve(params[:id]).to_json
+  return Stripe::Terminal::Reader.retrieve(id: params[:id], expand: ['location']).to_json
 end
 
 post '/api/terminal/:id/cannel' do
