@@ -20,9 +20,6 @@ export default function Customer(prop) {
   const [piCust, setPiCust] = useState(null);
   const [pI, setPi] = useState(null);
   const [checkoutUrl, setCheckoutUrl] = useState('');
-  const [candidates, setCandidates] = useState([]);
-  const [candidatesStatus, setCandidatesStatus] = useState('');
-  const [migratingTo, setMigratingTo] = useState(null);
 
   const [amount, setAmount] = useState(0);
   const [collectedEmail, setCollectedEmail] = useState('');
@@ -56,66 +53,6 @@ export default function Customer(prop) {
       setCustomer(cus);
     });
   }, []);
-
-  // Find candidate customers by latest payment method's fingerprint
-  useEffect(() => {
-    const fetchCandidates = async () => {
-      try {
-        if (!customer || !customer.cards || customer.cards.length === 0) return;
-        // Assume the first card in list is the most recent; otherwise sort by created if present
-        const sorted = [...customer.cards].sort((a, b) => {
-          const ca = (a.created || 0);
-          const cb = (b.created || 0);
-          return cb - ca;
-        });
-        const latest = sorted[0];
-        if (!latest || !latest.id) return;
-        setCandidatesStatus('loading');
-        const r = await fetch(`${API_URL}/api/customers/candidates_by_payment_method`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ payment_method_id: latest.id })
-        });
-        if (!r.ok) {
-          setCandidatesStatus('error');
-          return;
-        }
-        const data = await r.json();
-        setCandidates(data.candidates || []);
-        setCandidatesStatus('done');
-      } catch (e) {
-        setCandidatesStatus('error');
-      }
-    };
-    fetchCandidates();
-  }, [customer]);
-
-  const migrateAllPisToCustomer = async (targetCustomerId) => {
-    try {
-      if (!targetCustomerId) return;
-      setMigratingTo(targetCustomerId);
-      const r = await fetch(`${API_URL}/api/payment_intents/assign_customer`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ source_customer_id: id, target_customer_id: targetCustomerId })
-      });
-      if (!r.ok) {
-        const err = await r.json().catch(() => ({ error: 'Unknown error' }));
-        alert(`移行に失敗しました: ${err.error || r.statusText}`);
-        setMigratingTo(null);
-        return;
-      }
-      const result = await r.json();
-      const updatedCount = Array.isArray(result.updated) ? result.updated.length : 0;
-      const failedCount = Array.isArray(result.failed) ? result.failed.length : 0;
-      alert(`移行が完了しました: 成功 ${updatedCount} 件 / 失敗 ${failedCount} 件`);
-      navigate(`/customers/${targetCustomerId}`);
-    } catch (e) {
-      alert(`エラーが発生しました: ${e.message}`);
-    } finally {
-      setMigratingTo(null);
-    }
-  }
 
   const setDefault = (pid) => {
     fetch(`${API_URL}/api/customers/${id}/attach_default/${pid}`, {
@@ -511,41 +448,6 @@ export default function Customer(prop) {
               Merchant Dashboard: {customer.name || 'Loading...'}
             </p>
           </div>
-
-          {/* Candidate Customers by latest PM */}
-          {(candidatesStatus === 'loading' || (Array.isArray(candidates) && candidates.length > 0)) && (
-            <div className="stripe-card stripe-mb-6">
-              <div className="stripe-card-header">
-                <h3 className="stripe-card-title">候補のカスタマー (by latest PaymentMethod)</h3>
-                <p className="stripe-card-subtitle">同一カードの指紋に基づく候補</p>
-              </div>
-              {candidatesStatus === 'loading' ? (
-                <div className="stripe-text" style={{ padding: '12px' }}>検索中…</div>
-              ) : (
-                <div className="stripe-list">
-                  {candidates.map((c) => (
-                    <div key={c.id} className="stripe-list-item" onClick={() => navigate(`/customers/${c.id}`)}>
-                      <div className="stripe-list-item-content">
-                        <div className="stripe-list-item-title">{c.name || 'Unnamed Customer'}</div>
-                        <div className="stripe-list-item-subtitle">{c.email || '—'}</div>
-                      </div>
-                      <div className="stripe-list-item-meta" style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                        <div className="stripe-text-sm" style={{ fontFamily: 'var(--font-family-mono)' }}>{c.id}</div>
-                        <button
-                          className="stripe-button stripe-button-secondary"
-                          onClick={(e) => { e.stopPropagation(); migrateAllPisToCustomer(c.id); }}
-                          disabled={migratingTo === c.id}
-                          style={{ fontSize: '12px', padding: '4px 8px' }}
-                        >
-                          {migratingTo === c.id ? '移行中…' : 'この顧客に移行'}
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
 
           <div className="stripe-grid stripe-grid-2">
             {/* Customer Information */}
