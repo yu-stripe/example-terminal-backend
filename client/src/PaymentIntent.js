@@ -187,8 +187,8 @@ export default function PaymentIntentPage() {
 
           <div className="stripe-card stripe-mt-6">
             <div className="stripe-card-header">
-              <h3 className="stripe-card-title">fingerprint による候補検索とマージ</h3>
-              <p className="stripe-card-subtitle">この PI のカード fingerprint と一致する顧客候補を表示し、この PI を移行します</p>
+              <h3 className="stripe-card-title">この人ですか？</h3>
+              <p className="stripe-card-subtitle">カードの情報から、顧客候補を表示し、この支払いをこのお客様に移行します</p>
             </div>
             <div style={{ padding: '12px' }}>
               <div className="stripe-text-sm" style={{ color: 'var(--stripe-gray-500)' }}>

@@ -370,7 +370,7 @@ export default function Customer(prop) {
       case 'processing':
         return { className: 'stripe-badge-warning', label: '支払い中' };
       case 'requires_payment_method':
-        return { className: 'stripe-badge-error', label: '支払い方法なし' };
+        return { className: 'stripe-badge-error', label: '支払い待ち' };
       default:
         return { className: 'stripe-badge-info', label: pi.status };
     }
