@@ -21,6 +21,36 @@ export default function PaymentIntentPage() {
     fetchPI();
   }, [id]);
 
+  // Auto-search candidates once PI is loaded
+  useEffect(() => {
+    if (!pi) return;
+    // Avoid re-triggering if already searched
+    if (status === 'loading' || status === 'done' || status === 'error') return;
+    (async () => {
+      try {
+        const pm = pi?.payment_method;
+        const pmFp = pm?.card?.fingerprint || pm?.card_present?.fingerprint;
+        const lcd = pi?.latest_charge?.payment_method_details;
+        const lcdFp = lcd?.card?.fingerprint || lcd?.card_present?.fingerprint;
+        const fp = pmFp || lcdFp;
+        if (!fp) {
+          setStatus('no_fingerprint');
+          return;
+        }
+        setStatus('loading');
+        const r = await fetch(`${API_URL}/api/customers/candidates_by_payment_method`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ fingerprint: fp })
+        });
+        if (!r.ok) { setStatus('error'); return; }
+        const data = await r.json();
+        setCandidates(data.candidates || []);
+        setStatus('done');
+      } catch (e) {
+        setStatus('error');
+      }
+    })();
+  }, [pi, status]);
+
   const goHome = () => navigate('/');
   const goBack = () => navigate(-1);
 
@@ -79,7 +109,11 @@ export default function PaymentIntentPage() {
 
   const searchCandidatesByFingerprint = async () => {
     try {
-      const fp = pi?.payment_method?.card?.fingerprint || pi?.latest_charge?.payment_method_details?.card?.fingerprint;
+      const pm = pi?.payment_method;
+      const pmFp = pm?.card?.fingerprint || pm?.card_present?.fingerprint;
+      const lcd = pi?.latest_charge?.payment_method_details;
+      const lcdFp = lcd?.card?.fingerprint || lcd?.card_present?.fingerprint;
+      const fp = pmFp || lcdFp;
       if (!fp) {
         alert('fingerprint が見つかりません');
         return;
@@ -156,22 +190,30 @@ export default function PaymentIntentPage() {
               <h3 className="stripe-card-title">fingerprint による候補検索とマージ</h3>
               <p className="stripe-card-subtitle">この PI のカード fingerprint と一致する顧客候補を表示し、この PI を移行します</p>
             </div>
-            <div className="stripe-flex stripe-gap-2" style={{ padding: '12px' }}>
-              <button className="stripe-button stripe-button-primary" onClick={searchCandidatesByFingerprint} disabled={!pi || status==='loading'}>
-                {status==='loading' ? '検索中…' : '候補を検索'}
-              </button>
+            <div style={{ padding: '12px' }}>
+              <div className="stripe-text-sm" style={{ color: 'var(--stripe-gray-500)' }}>
+                {status === 'loading'
+                  ? '候補を自動検索中…'
+                  : status === 'no_fingerprint'
+                    ? 'fingerprint が見つかりませんでした'
+                    : status === 'error'
+                      ? '検索中にエラーが発生しました'
+                      : (Array.isArray(candidates) && candidates.length > 0
+                          ? `${candidates.length} 件の候補が見つかりました`
+                          : '候補は見つかりませんでした')}
+              </div>
             </div>
             {Array.isArray(candidates) && candidates.length > 0 && (
               <div className="stripe-list">
                 {candidates.map((c) => (
-                  <div key={c.id} className="stripe-list-item">
+                  <div key={c.id} className="stripe-list-item" onClick={() => navigate(`/customers/${c.id}`)}>
                     <div className="stripe-list-item-content">
                       <div className="stripe-list-item-title">{c.name || 'Unnamed Customer'}</div>
                       <div className="stripe-list-item-subtitle">{c.email || '—'}</div>
                     </div>
                     <div className="stripe-list-item-meta" style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                       <div className="stripe-text-sm" style={{ fontFamily: 'var(--font-family-mono)' }}>{c.id}</div>
-                      <button className="stripe-button stripe-button-secondary" onClick={() => mergeThisPiToCustomer(c.id)} style={{ fontSize: '12px', padding: '4px 8px' }}>
+                      <button className="stripe-button stripe-button-secondary" onClick={(e) => { e.stopPropagation(); mergeThisPiToCustomer(c.id); }} style={{ fontSize: '12px', padding: '4px 8px' }}>
                         この顧客に移行
                       </button>
                     </div>
