@@ -1028,12 +1028,11 @@ post '/api/terminal/:id/payment_intent_moto' do
     amount: amount,
     setup_future_usage: 'off_session',
     description: description_str,
-    metadata: metadata,
-    payment_method_options: { card_present: { moto: true } },
+    metadata: metadata
   })
   update_customer_metadata_with_brand_label(customer, metadata)
 
-  process = Stripe::Terminal::Reader.process_payment_intent(params[:id], {payment_intent: intent.id, process_config: {allow_redisplay: 'always'}})
+  process = Stripe::Terminal::Reader.process_payment_intent(params[:id], {payment_intent: intent.id, process_config: {allow_redisplay: 'always', moto: true}})
   content_type :json
   return({ payment_intent_id: intent.id, process: process }).to_json
 end
