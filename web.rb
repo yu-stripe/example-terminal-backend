@@ -1024,7 +1024,7 @@ post '/api/terminal/:id/payment_intent_moto' do
   intent = Stripe::PaymentIntent.create({
     currency: 'jpy',
     customer: customer,
-    payment_method_types: ['card_present'],
+    payment_method_types: ['card'],
     amount: amount,
     setup_future_usage: 'off_session',
     description: description_str,
