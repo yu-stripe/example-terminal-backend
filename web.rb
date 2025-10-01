@@ -1012,6 +1012,32 @@ post '/api/terminal/:id/payment_intent' do
   return({ payment_intent_id: intent.id, process: process }).to_json
 end
 
+post '/api/terminal/:id/payment_intent_moto' do
+  req = JSON.parse(request.body.read)
+  customer = req['customer']
+  amount = req['amount']
+
+  brand_override = get_customer_brand(customer)
+  metadata = generate_random_camera_metadata(brand_override)
+  description_str = build_purchase_description(metadata)
+
+  intent = Stripe::PaymentIntent.create({
+    currency: 'jpy',
+    customer: customer,
+    payment_method_types: ['card_present'],
+    amount: amount,
+    setup_future_usage: 'off_session',
+    description: description_str,
+    metadata: metadata,
+    payment_method_options: { card_present: { moto: true } },
+  })
+  update_customer_metadata_with_brand_label(customer, metadata)
+
+  process = Stripe::Terminal::Reader.process_payment_intent(params[:id], {payment_intent: intent.id, process_config: {allow_redisplay: 'always'}})
+  content_type :json
+  return({ payment_intent_id: intent.id, process: process }).to_json
+end
+
 # This endpoint performs an online refund (non-terminal) for a PaymentIntent or Charge
 post '/api/refunds' do
   begin

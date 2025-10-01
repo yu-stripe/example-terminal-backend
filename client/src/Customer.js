@@ -5,6 +5,7 @@ import TimeFormatter from "./TimeFormatter"
 import { API_URL } from './index.js'
 import QRCode from "react-qr-code";
 import PosTerminalCard from './components/PosTerminalCard';
+import MotoTerminalCard from './components/MotoTerminalCard';
 import QrPaymentCard from './components/QrPaymentCard';
 import OnlinePaymentCard from './components/OnlinePaymentCard';
 import PaymentIntentsCard from './components/PaymentIntentsCard';
@@ -322,6 +323,46 @@ export default function Customer(prop) {
       }
     } catch (error) {
       console.error('Error cancelling action:', error);
+      alert(`Error: ${error.message}`);
+    }
+  }
+
+  let collectMoto = async (e) => {
+    e.preventDefault();
+    if (!selectedTerminal) {
+      alert('Terminal not selected. Please select a terminal first.');
+      return;
+    }
+
+    try {
+      const syncResponse = await fetch(`${API_URL}/api/terminal/select`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ reader_id: selectedTerminal }),
+      });
+
+      if (!syncResponse.ok) {
+        throw new Error('Failed to sync terminal selection with server');
+      }
+
+      const response = await fetch(`${API_URL}/api/terminal/${selectedTerminal}/payment_intent_moto`, {
+        method: "POST",
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({amount: amount, customer: id, currency: 'jpy' })
+      });
+
+      if (response.ok) {
+        console.log('MOTO Payment intent created successfully');
+      } else {
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        console.error('Failed to create MOTO payment intent:', errorData.error);
+      }
+    } catch (error) {
+      console.error('Error creating MOTO payment intent:', error);
       alert(`Error: ${error.message}`);
     }
   }
@@ -691,6 +732,12 @@ export default function Customer(prop) {
               amount={amount}
               setAmount={setAmount}
               onSubmitCollect={collect}
+              onCancel={cannel}
+            />
+            <MotoTerminalCard
+              amount={amount}
+              setAmount={setAmount}
+              onSubmitCollect={collectMoto}
               onCancel={cannel}
             />
             <QrPaymentCard
