@@ -133,7 +133,7 @@ export default function Customers() {
                 Terminal
               </Link>
               <Link to="/customers" className="stripe-nav-link active">
-                Customers
+                POS レジ
               </Link>
               <Link to="/links" className="stripe-nav-link">
                 Links
@@ -154,7 +154,7 @@ export default function Customers() {
           <div className="stripe-mb-6">
             <div className="stripe-flex stripe-justify-between stripe-items-center" style={{ gap: '12px', flexWrap: 'wrap' }}>
               <div>
-                <h1 className="stripe-h1">Customers</h1>
+                <h1 className="stripe-h1">PoS レジ</h1>
                 <p className="stripe-text">
                   Manage your customer database and view customer details.
                 </p>
