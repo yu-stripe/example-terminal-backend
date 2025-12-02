@@ -53,6 +53,35 @@ def log_info(message)
   return message
 end
 
+# Helper method to get Stripe request options with account context
+# For Express accounts with destination charges
+def stripe_request_options
+  options = {}
+  if session[:selected_stripe_account]
+    options[:stripe_account] = session[:selected_stripe_account]
+  end
+  options
+end
+
+# Helper method to get the application fee amount (10% of total)
+# For destination charges
+def calculate_application_fee(amount)
+  (amount * 0.10).to_i
+end
+
+# Helper method to get destination charge params for Express accounts
+# Returns params for creating charges on connected Express accounts
+# Includes on_behalf_of for proper payment attribution
+def destination_charge_params(amount, connected_account_id)
+  {
+    on_behalf_of: connected_account_id,
+    transfer_data: {
+      destination: connected_account_id
+    },
+    application_fee_amount: calculate_application_fee(amount)
+  }
+end
+
 get '/' do
   status 200
   send_file 'index.html'
@@ -74,8 +103,107 @@ end
 
 get '/token' do
   return {
-    public_key: ENV['STRIPE_PUBLISHABLE_KEY'] 
+    public_key: ENV['STRIPE_PUBLISHABLE_KEY']
   }.to_json
+end
+
+# List connected Express accounts
+get '/api/accounts' do
+  validationError = validateApiKey
+  if !validationError.nil?
+    status 400
+    return log_info(validationError)
+  end
+
+  begin
+    accounts = Stripe::Account.list({
+      limit: 100
+    })
+
+    # Filter to only Express accounts
+    express_accounts = accounts.data.select { |account| account.type == 'express' }
+
+    status 200
+    content_type :json
+    return express_accounts.to_json
+  rescue Stripe::StripeError => e
+    status 402
+    return log_info("Error listing accounts! #{e.message}")
+  end
+end
+
+# Get currently selected account
+get '/api/accounts/selected' do
+  content_type :json
+  if session[:selected_stripe_account]
+    begin
+      account = Stripe::Account.retrieve(session[:selected_stripe_account])
+      status 200
+      return {
+        account_id: account.id,
+        business_name: account.business_profile&.name || account.id,
+        email: account.email
+      }.to_json
+    rescue Stripe::StripeError => e
+      # Account might have been deleted, clear the session
+      session[:selected_stripe_account] = nil
+      status 404
+      return log_info("Selected account not found: #{e.message}")
+    end
+  else
+    status 200
+    return { account_id: nil }.to_json
+  end
+end
+
+# Select a connected account for context switching
+post '/api/accounts/select' do
+  validationError = validateApiKey
+  if !validationError.nil?
+    status 400
+    return log_info(validationError)
+  end
+
+  account_id = params[:account_id]
+
+  if account_id.nil? || account_id.empty?
+    status 400
+    return log_info("Error: account_id is required")
+  end
+
+  begin
+    # Verify the account exists and is an Express account
+    account = Stripe::Account.retrieve(account_id)
+
+    if account.type != 'express'
+      status 400
+      return log_info("Error: Only Express accounts are supported")
+    end
+
+    session[:selected_stripe_account] = account_id
+    log_info("Selected account: #{account_id}")
+
+    status 200
+    content_type :json
+    return {
+      account_id: account.id,
+      business_name: account.business_profile&.name || account.id,
+      email: account.email
+    }.to_json
+  rescue Stripe::StripeError => e
+    status 402
+    return log_info("Error selecting account! #{e.message}")
+  end
+end
+
+# Clear the selected account (switch back to platform account)
+post '/api/accounts/clear' do
+  session[:selected_stripe_account] = nil
+  log_info("Cleared selected account, switched to platform account")
+
+  status 200
+  content_type :json
+  return { account_id: nil }.to_json
 end
 
 # This endpoint registers a Verifone P400 reader to your Stripe account.
@@ -139,9 +267,9 @@ end
 # This endpoint creates a PaymentIntent.
 # https://stripe.com/docs/terminal/payments#create
 #
-# The example backend does not currently support connected accounts.
-# To create a PaymentIntent for a connected account, see
-# https://stripe.com/docs/terminal/features/connect#direct-payment-intents-server-side
+# Now supports destination charges for Express connected accounts.
+# When an account is selected, creates a PaymentIntent with on_behalf_of and transfer_data.
+# https://stripe.com/docs/terminal/features/connect#destination-charges
 post '/create_payment_intent' do
   validationError = validateApiKey
   if !validationError.nil?
@@ -150,7 +278,7 @@ post '/create_payment_intent' do
   end
 
   begin
-    payment_intent = Stripe::PaymentIntent.create(
+    payment_intent_params = {
       :payment_method_types => params[:payment_method_types] || ['card_present'],
       :capture_method => params[:capture_method] || 'manual',
       :amount => params[:amount],
@@ -158,7 +286,19 @@ post '/create_payment_intent' do
       :description => params[:description] || 'Example PaymentIntent',
       :payment_method_options => params[:payment_method_options] || [],
       :receipt_email => params[:receipt_email],
-    )
+    }
+
+    # Add destination charge params if a connected account is selected
+    if session[:selected_stripe_account]
+      amount = params[:amount].to_i
+      connected_account = session[:selected_stripe_account]
+
+      payment_intent_params.merge!(destination_charge_params(amount, connected_account))
+
+      log_info("Creating destination charge PaymentIntent for account: #{connected_account}")
+    end
+
+    payment_intent = Stripe::PaymentIntent.create(payment_intent_params)
   rescue Stripe::StripeError => e
     status 402
     return log_info("Error creating PaymentIntent! #{e.message}")
@@ -996,7 +1136,7 @@ post '/api/terminal/:id/payment_intent' do
   metadata = generate_random_camera_metadata(brand_override)
   description_str = build_purchase_description(metadata)
 
-  intent = Stripe::PaymentIntent.create({
+  payment_intent_params = {
     currency: 'jpy',
     customer: customer,
     payment_method_types: ['card_present'],
@@ -1004,7 +1144,16 @@ post '/api/terminal/:id/payment_intent' do
     setup_future_usage: "off_session",
     description: description_str,
     metadata: metadata,
-  })
+  }
+
+  # Add destination charge params if a connected account is selected
+  if session[:selected_stripe_account]
+    connected_account = session[:selected_stripe_account]
+    payment_intent_params.merge!(destination_charge_params(amount, connected_account))
+    log_info("Creating destination charge for terminal payment, account: #{connected_account}")
+  end
+
+  intent = Stripe::PaymentIntent.create(payment_intent_params)
   update_customer_metadata_with_brand_label(customer, metadata)
 
   process = Stripe::Terminal::Reader.process_payment_intent(params[:id], {payment_intent: intent.id, process_config: {allow_redisplay: 'always'}})
@@ -1021,7 +1170,7 @@ post '/api/terminal/:id/payment_intent_moto' do
   metadata = generate_random_camera_metadata(brand_override)
   description_str = build_purchase_description(metadata)
 
-  intent = Stripe::PaymentIntent.create({
+  payment_intent_params = {
     currency: 'jpy',
     customer: customer,
     payment_method_types: ['card'],
@@ -1029,7 +1178,16 @@ post '/api/terminal/:id/payment_intent_moto' do
     setup_future_usage: 'off_session',
     description: description_str,
     metadata: metadata
-  })
+  }
+
+  # Add destination charge params if a connected account is selected
+  if session[:selected_stripe_account]
+    connected_account = session[:selected_stripe_account]
+    payment_intent_params.merge!(destination_charge_params(amount, connected_account))
+    log_info("Creating destination charge for MOTO payment, account: #{connected_account}")
+  end
+
+  intent = Stripe::PaymentIntent.create(payment_intent_params)
   update_customer_metadata_with_brand_label(customer, metadata)
 
   process = Stripe::Terminal::Reader.process_payment_intent(params[:id], {payment_intent: intent.id, process_config: {allow_redisplay: 'always', moto: true}})
