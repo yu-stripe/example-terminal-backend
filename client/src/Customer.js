@@ -9,6 +9,7 @@ import MotoTerminalCard from './components/MotoTerminalCard';
 import QrPaymentCard from './components/QrPaymentCard';
 import OnlinePaymentCard from './components/OnlinePaymentCard';
 import PaymentIntentsCard from './components/PaymentIntentsCard';
+import SubscriptionsCard from './components/SubscriptionsCard';
 import { useTerminal } from './context/TerminalContext';
 import TerminalStatusBar from './components/TerminalStatusBar';
 import './stripe-theme.css';
@@ -650,7 +651,7 @@ export default function Customer(prop) {
             getRefundInfo={getRefundInfo}
           />
 
-          
+          <SubscriptionsCard customerId={id} />
 
           {/* Email Collection */}
           <div className="stripe-card stripe-mt-6">

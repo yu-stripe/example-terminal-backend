@@ -407,6 +407,22 @@ get '/api/customers/:id' do
   return customer.to_json
 end
 
+# Get customer subscriptions
+get '/api/customers/:id/subscriptions' do
+  begin
+    subscriptions = Stripe::Subscription.list({
+      customer: params[:id],
+      limit: 100
+    }, stripe_request_options)
+
+    content_type :json
+    return subscriptions.to_json
+  rescue Stripe::StripeError => e
+    status 402
+    return log_info("Error fetching subscriptions: #{e.message}")
+  end
+end
+
 def extract_fingerprint_from_payment_method(pm)
   begin
     # pm can be an object or id; normalize to object
