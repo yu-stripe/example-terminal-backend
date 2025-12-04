@@ -11,7 +11,7 @@ import './stripe-theme.css';
 export default function Customers() {
   const navigate = useNavigate();
   const [customers, setCustomers] = useState([]);
-  const [amount, setAmount] = useState(0);
+  const [amount, setAmount] = useState('');
   const { selectedTerminal } = useTerminal();
   const [creating, setCreating] = useState(false);
 

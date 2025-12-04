@@ -22,7 +22,7 @@ export default function Customer(prop) {
   const [pI, setPi] = useState(null);
   const [checkoutUrl, setCheckoutUrl] = useState('');
 
-  const [amount, setAmount] = useState(0);
+  const [amount, setAmount] = useState('');
   const [collectedEmail, setCollectedEmail] = useState('');
   const [emailCollectionStatus, setEmailCollectionStatus] = useState('');
 
