@@ -415,7 +415,7 @@ get '/api/customers/:id/subscriptions' do
     subscriptions = Stripe::Subscription.list({
       customer: params[:id],
       limit: 100
-    }, stripe_request_options)
+    })
 
     content_type :json
     return subscriptions.to_json
