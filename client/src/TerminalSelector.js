@@ -11,7 +11,8 @@ const TerminalSelector = ({ onTerminalSelected }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [isSelecting, setIsSelecting] = useState(false);
-  
+  const [confirmationStatus, setConfirmationStatus] = useState('');
+
   const { selectedTerminal, terminalReader, selectTerminal, clearTerminal } = useTerminal();
 
   const goHome = () => {
@@ -70,6 +71,84 @@ const TerminalSelector = ({ onTerminalSelected }) => {
         setIsSelecting(false);
       }
     }
+  };
+
+  const showReaderConfirmation = async () => {
+    if (!selectedTerminal) {
+      alert('Terminal not selected. Please select a terminal first.');
+      return;
+    }
+
+    setConfirmationStatus('showing');
+
+    try {
+      // First, ensure the server session has the correct terminal selected
+      const syncResponse = await fetch(`${API_URL}/api/terminal/select`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ reader_id: selectedTerminal }),
+      });
+
+      if (!syncResponse.ok) {
+        throw new Error('Failed to sync terminal selection with server');
+      }
+
+      // Now use the convenience endpoint that uses the selected terminal
+      const r = await fetch(`${API_URL}/api/terminal/collect_confirmation`, {
+        method: "POST",
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({})
+      });
+
+      if (r.ok) {
+        setConfirmationStatus('waiting');
+        // Poll for confirmation result
+        pollForConfirmation();
+      } else {
+        const errorData = await r.json().catch(() => ({ error: 'Unknown error' }));
+        setConfirmationStatus('error');
+        alert(`Error: ${errorData.error || 'Failed to show confirmation'}`);
+      }
+    } catch (error) {
+      setConfirmationStatus('error');
+      alert(`Error: ${error.message}`);
+    }
+  };
+
+  const pollForConfirmation = () => {
+    const pollInterval = setInterval(() => {
+      // Use the convenience endpoint that uses selected terminal from session
+      fetch(`${API_URL}/api/terminal/collected_data`)
+        .then(async(r) => {
+          if (r.ok) {
+            const data = await r.json();
+            if (data && data.inputs) {
+              setConfirmationStatus('confirmed');
+              clearInterval(pollInterval);
+            }
+          } else if (r.status === 404) {
+            // No data yet, continue polling
+          } else {
+            setConfirmationStatus('error');
+            clearInterval(pollInterval);
+          }
+        })
+        .catch(error => {
+          setConfirmationStatus('error');
+          clearInterval(pollInterval);
+        });
+    }, 2000);
+
+    setTimeout(() => {
+      clearInterval(pollInterval);
+      if (confirmationStatus === 'waiting') {
+        setConfirmationStatus('timeout');
+      }
+    }, 60000);
   };
 
   const getStatusColor = (status) => {
@@ -203,32 +282,72 @@ const TerminalSelector = ({ onTerminalSelected }) => {
 
           {/* Current Selection Status */}
           {selectedTerminal && (
-            <div style={{ 
-              background: '#d4edda', 
-              color: '#155724', 
-              padding: '15px', 
-              marginBottom: '30px', 
+            <div style={{
+              background: '#d4edda',
+              color: '#155724',
+              padding: '15px',
+              marginBottom: '30px',
               borderRadius: '4px',
               border: '1px solid #c3e6cb'
             }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span>✓ Currently selected: {selectedTerminal}</span>
-                <button
-                  onClick={handleClearSelection}
-                  disabled={isSelecting}
-                  style={{
-                    background: '#6c757d',
-                    color: 'white',
-                    border: 'none',
-                    padding: '8px 16px',
-                    borderRadius: '4px',
-                    cursor: 'pointer',
-                    fontSize: '14px'
-                  }}
-                >
-                  {isSelecting ? 'Clearing...' : 'Clear Selection'}
-                </button>
+                <span>✓ Currently selected: {terminalReader?.label || selectedTerminal}</span>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button
+                    onClick={showReaderConfirmation}
+                    disabled={confirmationStatus === 'showing' || confirmationStatus === 'waiting'}
+                    style={{
+                      background: '#007bff',
+                      color: 'white',
+                      border: 'none',
+                      padding: '8px 16px',
+                      borderRadius: '4px',
+                      cursor: confirmationStatus === 'showing' || confirmationStatus === 'waiting' ? 'not-allowed' : 'pointer',
+                      fontSize: '14px',
+                      opacity: confirmationStatus === 'showing' || confirmationStatus === 'waiting' ? 0.6 : 1
+                    }}
+                  >
+                    {confirmationStatus === 'showing' || confirmationStatus === 'waiting' ?
+                      '確認表示中...' : 'リーダー情報を表示'
+                    }
+                  </button>
+                  <button
+                    onClick={handleClearSelection}
+                    disabled={isSelecting}
+                    style={{
+                      background: '#6c757d',
+                      color: 'white',
+                      border: 'none',
+                      padding: '8px 16px',
+                      borderRadius: '4px',
+                      cursor: 'pointer',
+                      fontSize: '14px'
+                    }}
+                  >
+                    {isSelecting ? 'Clearing...' : 'Clear Selection'}
+                  </button>
+                </div>
               </div>
+
+              {/* Status message below buttons */}
+              {confirmationStatus && (
+                <div style={{
+                  padding: '10px',
+                  marginTop: '10px',
+                  backgroundColor: confirmationStatus === 'error' || confirmationStatus === 'timeout' ? '#f8d7da' : confirmationStatus === 'confirmed' ? '#d4edda' : '#d1ecf1',
+                  borderRadius: '4px',
+                  border: `1px solid ${confirmationStatus === 'error' || confirmationStatus === 'timeout' ? '#f5c6cb' : confirmationStatus === 'confirmed' ? '#c3e6cb' : '#bee5eb'}`,
+                  fontSize: '14px'
+                }}>
+                  ステータス: {
+                    confirmationStatus === 'showing' ? '表示中...' :
+                    confirmationStatus === 'waiting' ? 'Terminal で確認を待機中...' :
+                    confirmationStatus === 'confirmed' ? '確認完了 ✓' :
+                    confirmationStatus === 'timeout' ? 'タイムアウトしました' :
+                    confirmationStatus === 'error' ? 'エラーが発生しました' : ''
+                  }
+                </div>
+              )}
             </div>
           )}
 

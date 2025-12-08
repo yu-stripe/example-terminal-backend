@@ -1009,6 +1009,64 @@ post '/api/refunds' do
   return refund.to_json
 end
 
+# This endpoint initiates collecting confirmation (showing reader info) from the terminal reader
+# https://docs.stripe.com/terminal/features/collect-inputs
+post '/api/terminal/:id/collect_confirmation' do
+  validationError = validateApiKey
+  if !validationError.nil?
+    status 400
+    return log_info(validationError)
+  end
+
+  # Parse request body to get customer_id
+  req = JSON.parse(request.body.read) rescue {}
+  customer_id = req['customer_id']
+
+  begin
+    # Get reader info to display
+    reader = Stripe::Terminal::Reader.retrieve(params[:id])
+    reader_label = reader.label || reader.id
+    reader_id = reader.id
+
+    # Collect confirmation with reader info displayed
+    collect_inputs_params = {
+      inputs: [{
+        type: 'selection',
+        custom_text: {
+          title: 'リーダー確認',
+          description: "Reader: #{reader_label}\nID: #{reader_id}",
+          submit_button: 'OK',
+        },
+        required: true,
+        selection: {
+          choices: [{
+            value: 'confirmed',
+            label: '確認しました'
+          }]
+        }
+      }]
+    }
+
+    # Add customer_id to metadata if provided
+    if customer_id
+      collect_inputs_params[:metadata] = { customer_id: customer_id }
+    end
+
+    collect_inputs = Stripe::Terminal::Reader.collect_inputs(
+      params[:id],
+      collect_inputs_params
+    )
+    p collect_inputs
+  rescue Stripe::StripeError => e
+    status 402
+    return log_info("Error collecting confirmation! #{e.message}")
+  end
+
+  log_info("Reader confirmation initiated on reader: #{params[:id]} for customer: #{customer_id}")
+  status 200
+  return collect_inputs.to_json
+end
+
 # This endpoint initiates collecting email input from the terminal reader
 # https://docs.stripe.com/terminal/features/collect-inputs
 post '/api/terminal/:id/collect_email' do
@@ -1214,14 +1272,78 @@ post '/api/terminal/cancel_collect_inputs' do
   begin
     # Cancel the current action on the selected reader
     cancel_result = Stripe::Terminal::Reader.cancel_action(reader_id)
-    
+
     log_info("Collect inputs canceled on selected reader: #{reader_id}")
     status 200
     return cancel_result.to_json
-    
+
   rescue Stripe::StripeError => e
     status 402
     return log_info("Error canceling collect inputs on selected reader! #{e.message}")
+  end
+end
+
+# Convenience endpoint that uses the selected terminal reader from session for collecting confirmation
+post '/api/terminal/collect_confirmation' do
+  validationError = validateApiKey
+  if !validationError.nil?
+    status 400
+    return log_info(validationError)
+  end
+
+  # Get selected reader from session
+  reader_id = session[:selected_reader_id]
+  if reader_id.nil?
+    status 400
+    return { error: 'No terminal reader selected. Please select a reader first.' }.to_json
+  end
+
+  # Parse request body to get customer_id
+  req = JSON.parse(request.body.read) rescue {}
+  customer_id = req['customer_id']
+
+  begin
+    # Get reader info to display
+    reader = Stripe::Terminal::Reader.retrieve(reader_id)
+    reader_label = reader.label || reader.id
+    reader_id_display = reader.id
+
+    # Collect confirmation with reader info displayed
+    collect_inputs_params = {
+      inputs: [{
+        type: 'selection',
+        custom_text: {
+          title: 'リーダー確認',
+          description: "Reader: #{reader_label}\nID: #{reader_id_display}",
+          submit_button: 'OK',
+        },
+        required: true,
+        selection: {
+          choices: [{
+            value: 'confirmed',
+            label: '確認しました'
+          }]
+        }
+      }]
+    }
+
+    # Add customer_id to metadata if provided
+    if customer_id
+      collect_inputs_params[:metadata] = { customer_id: customer_id }
+    end
+
+    collect_inputs = Stripe::Terminal::Reader.collect_inputs(
+      reader_id,
+      collect_inputs_params
+    )
+
+    log_info("Reader confirmation initiated on selected reader: #{reader_id} for customer: #{customer_id}")
+    status 200
+    return collect_inputs.to_json
+
+  rescue Stripe::StripeError => e
+    status 402
+    return log_info("Error collecting confirmation on selected reader! #{e.message}")
   end
 end
 
