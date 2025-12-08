@@ -29,7 +29,7 @@ export const TerminalProvider = ({ children }) => {
 
       // First try to get from localStorage
       const localTerminalId = localStorage.getItem('selectedTerminalId');
-      
+
       // Then sync with server
       const response = await fetch(`${API_URL}/api/terminal/selected`);
       if (response.ok) {
@@ -45,7 +45,17 @@ export const TerminalProvider = ({ children }) => {
           localStorage.setItem('selectedTerminalId', serverTerminalId);
         } else if (localTerminalId) {
           // No server selection but localStorage has one - sync to server
-          await selectTerminalOnServer(localTerminalId);
+          try {
+            await selectTerminalOnServer(localTerminalId);
+            const reader = await getTerminalReader(localTerminalId);
+            setSelectedTerminal(localTerminalId);
+            setTerminalReader(reader);
+          } catch (err) {
+            console.error('Failed to restore terminal from localStorage:', err);
+            // Keep localStorage but show as not selected until manual selection
+            setSelectedTerminal(null);
+            setTerminalReader(null);
+          }
         } else {
           // No terminal selected anywhere
           setSelectedTerminal(null);
@@ -55,16 +65,28 @@ export const TerminalProvider = ({ children }) => {
         // Server error but we have local storage - try to sync
         try {
           await selectTerminalOnServer(localTerminalId);
+          const reader = await getTerminalReader(localTerminalId);
+          setSelectedTerminal(localTerminalId);
+          setTerminalReader(reader);
         } catch (err) {
-          // If sync fails, clear local storage
-          localStorage.removeItem('selectedTerminalId');
+          console.error('Failed to restore terminal from localStorage:', err);
+          // Keep the terminal ID in localStorage for retry on next load
           setSelectedTerminal(null);
           setTerminalReader(null);
         }
+      } else {
+        // No terminal selected anywhere
+        setSelectedTerminal(null);
+        setTerminalReader(null);
       }
     } catch (err) {
       setError(err.message);
       console.error('Error loading selected terminal:', err);
+      // If there's an error but we have localStorage, try to use it
+      const localTerminalId = localStorage.getItem('selectedTerminalId');
+      if (localTerminalId) {
+        setSelectedTerminal(localTerminalId);
+      }
     } finally {
       setLoading(false);
     }

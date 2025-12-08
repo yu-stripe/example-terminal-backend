@@ -31,16 +31,10 @@ export default function App() {
             </div>
             <nav className="stripe-nav">
               <div className="stripe-nav-link" onClick={goToTerminal}>
-                Terminal
+                リーダー
               </div>
               <div className="stripe-nav-link" onClick={goToCustomers}>
-                Customers
-              </div>
-              <div className="stripe-nav-link" onClick={goToLinks}>
-                Links
-              </div>
-              <div className="stripe-nav-link" onClick={goToCheckout}>
-                Checkout
+                POSレジ
               </div>
             </nav>
           </div>

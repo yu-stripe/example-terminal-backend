@@ -63,23 +63,15 @@ export default function Links(props) {
             </div>
             <nav className="stripe-nav">
               <Link to="/terminal" className="stripe-nav-link">
-                Terminal
+                リーダー
               </Link>
               <Link to="/customers" className="stripe-nav-link">
-                Customers
-              </Link>
-              <Link to="/links" className="stripe-nav-link active">
-                Links
-              </Link>
-              <Link to="/custom-checkout" className="stripe-nav-link">
-                Checkout
+                POSレジ
               </Link>
             </nav>
           </div>
         </div>
       </header>
-
-      <TerminalStatusBar showFullStatus={false} />
 
       {/* Main Content */}
       <main className="stripe-main">

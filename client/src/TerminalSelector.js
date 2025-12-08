@@ -99,6 +99,40 @@ const TerminalSelector = ({ onTerminalSelected }) => {
 
   const renderHeader = () => (
     <>
+      {/* Status Bar */}
+      {!selectedTerminal ? (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          backgroundColor: 'var(--stripe-orange)',
+          color: 'white',
+          padding: '12px',
+          textAlign: 'center',
+          fontSize: '14px',
+          zIndex: 1000
+        }}>
+          ⚠️ No terminal selected. <Link to="/terminal" style={{ color: 'white', textDecoration: 'underline' }}>Select a terminal</Link> to use terminal features.
+        </div>
+      ) : (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          backgroundColor: 'var(--stripe-green)',
+          color: 'white',
+          padding: '12px',
+          textAlign: 'center',
+          fontSize: '14px',
+          zIndex: 1000
+        }}>
+          ✓ Terminal selected: <strong>{selectedTerminal}</strong>
+        </div>
+      )}
+      {/* Spacer for fixed status bar */}
+      <div style={{ height: '46px' }}></div>
       {/* Header */}
       <header className="stripe-header">
         <div className="stripe-container">
@@ -108,23 +142,15 @@ const TerminalSelector = ({ onTerminalSelected }) => {
             </div>
             <nav className="stripe-nav">
               <Link to="/terminal" className="stripe-nav-link active">
-                Terminal
+                リーダー
               </Link>
               <Link to="/customers" className="stripe-nav-link">
-                Customers
-              </Link>
-              <Link to="/links" className="stripe-nav-link">
-                Links
-              </Link>
-              <Link to="/custom-checkout" className="stripe-nav-link">
-                Checkout
+                POSレジ
               </Link>
             </nav>
           </div>
         </div>
       </header>
-
-      <TerminalStatusBar showClearButton={true} />
     </>
   );
 

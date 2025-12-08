@@ -158,16 +158,12 @@ export default function PaymentIntentPage() {
           <div className="stripe-header-content">
             <div className="stripe-logo" onClick={goHome}>Stripe Terminal Demo</div>
             <nav className="stripe-nav">
-              <Link to="/terminal" className="stripe-nav-link">Terminal</Link>
-              <Link to="/customers" className="stripe-nav-link">Customers</Link>
-              <Link to="/links" className="stripe-nav-link">Links</Link>
-              <Link to="/custom-checkout" className="stripe-nav-link">Checkout</Link>
+              <Link to="/terminal" className="stripe-nav-link">リーダー</Link>
+              <Link to="/customers" className="stripe-nav-link">POSレジ</Link>
             </nav>
           </div>
         </div>
       </header>
-
-      <TerminalStatusBar showClearButton={true} />
 
       <main className="stripe-main">
         <div className="stripe-container">

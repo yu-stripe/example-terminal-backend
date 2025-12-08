@@ -85,7 +85,7 @@ body {
   border-bottom: 1px solid var(--stripe-gray-200);
   padding: var(--space-4) 0;
   position: sticky;
-  top: 0;
+  top: 46px;
   z-index: 100;
 }
 
