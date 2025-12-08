@@ -12,7 +12,7 @@ export default function Customers() {
   const navigate = useNavigate();
   const [customers, setCustomers] = useState([]);
   const [amount, setAmount] = useState('');
-  const { selectedTerminal } = useTerminal();
+  const { selectedTerminal, terminalReader } = useTerminal();
   const [creating, setCreating] = useState(false);
 
   useEffect(() => {
@@ -150,7 +150,7 @@ export default function Customers() {
           fontSize: '14px',
           zIndex: 1000
         }}>
-          ✓ Terminal selected: <strong>{selectedTerminal}</strong>
+          ✓ Terminal selected: <strong>{terminalReader?.label || selectedTerminal}</strong>
         </div>
       )}
       {/* Spacer for fixed status bar */}

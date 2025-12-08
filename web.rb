@@ -369,14 +369,32 @@ post '/create_location' do
 end
 
 get '/api/customers' do
-  return Stripe::Customer.list({limit: 5}).to_json
+  return Stripe::Customer.list({limit: 30}).to_json
+end
+
+def generate_random_japanese_name
+  last_names = [
+    "佐藤", "鈴木", "高橋", "田中", "渡辺", "伊藤", "山本", "中村", "小林", "加藤",
+    "吉田", "山田", "佐々木", "山口", "松本", "井上", "木村", "林", "清水", "山崎",
+    "阿部", "森", "池田", "橋本", "石川", "前田", "藤田", "後藤", "斎藤", "長谷川",
+    "近藤", "村上", "遠藤", "青木", "坂本", "西村", "福田", "太田", "岡田", "中島"
+  ]
+
+  first_names = [
+    "太郎", "花子", "一郎", "美咲", "健太", "さくら", "翔太", "愛", "大輔", "優子",
+    "修", "由美", "勇", "真由美", "誠", "恵子", "隆", "陽子", "聡", "直子",
+    "健", "美香", "明", "京子", "涼", "麻衣", "拓也", "千春", "雄一", "真理子",
+    "裕太", "奈々", "翔", "美穂", "剛", "瑞穂", "亮", "友美", "優", "香織"
+  ]
+
+  "#{last_names.sample} #{first_names.sample}"
 end
 
 post '/api/customers' do
   # Create a temporary/demo customer
   begin
     req = JSON.parse(request.body.read) rescue {}
-    name = req['name'] || '仮ユーザー'
+    name = req['name'] || generate_random_japanese_name
     email = req['email']
     description = req['description'] || 'Temporary customer created from demo'
 
@@ -569,49 +587,44 @@ post '/api/customers/candidates_by_payment_method' do
 end
 
 def generate_random_camera_metadata(preferred_brand = nil)
-  areas = ["Tokyo", "Osaka", "Yokohama", "Nagoya", "Sapporo", "Fukuoka"]
+  areas = ["東京", "大阪", "横浜", "名古屋", "札幌", "福岡"]
   floors = ["B1F", "1F", "2F", "3F", "4F", "5F"]
 
   category_options = {
-    "Camera" => ["Mirrorless", "DSLR", "Compact", "Rangefinder"],
-    "Lens" => ["Zoom", "Prime", "Macro", "Telephoto"],
-    "Film" => ["Color", "Black & White", "Cine"],
-    "Accessory" => ["Tripod", "Bag", "Memory Card", "Flash", "Filter", "Battery", "Mic", "Strap"],
+    "家電" => ["スマートフォン", "タブレット", "ノートパソコン", "ヘッドフォン", "スピーカー"],
+    "衣料品" => ["Tシャツ", "ジーンズ", "ジャケット", "スニーカー", "ワンピース"],
+    "雑貨" => ["ランプ", "クッション", "ラグ", "キャンドル", "植木鉢"],
+    "食品" => ["コーヒー", "紅茶", "スナック", "チョコレート", "ジュース"],
   }
 
   brands = [
-    "Canon", "Nikon", "Sony", "Fujifilm", "Leica", "Olympus", "Panasonic", "SIGMA", "Tamron"
+    "Apple", "Samsung", "Sony", "ユニクロ", "Nike", "無印良品", "スターバックス", "IKEA", "Panasonic"
   ]
 
-  camera_models_by_brand = {
-    "Canon" => ["EOS R6 Mark II", "EOS R10", "EOS R5"],
-    "Nikon" => ["Z6 II", "Z fc", "Z8"],
-    "Sony" => ["α7 IV", "ZV-E10", "α7C II"],
-    "Fujifilm" => ["X-T5", "X100V", "X-S20"],
-    "Leica" => ["Q3", "M11", "SL2"],
-    "Olympus" => ["OM-1", "E-M10 Mark IV"],
-    "Panasonic" => ["LUMIX S5 II", "LUMIX G9 II"],
+  electronics_by_brand = {
+    "Apple" => ["iPhone 15", "iPad Air", "MacBook Pro", "AirPods Pro"],
+    "Samsung" => ["Galaxy S24", "Galaxy Tab S9", "Galaxy Buds"],
+    "Sony" => ["WH-1000XM5 ヘッドフォン", "SRS-XB43 スピーカー", "Xperia 1 V"],
+    "Panasonic" => ["完全ワイヤレスイヤホン", "ポータブルスピーカー"],
   }
 
-  lenses_by_brand = {
-    "Canon" => ["RF 24-70mm F2.8", "RF 50mm F1.8"],
-    "Nikon" => ["Z 24-120mm F4", "Z 50mm F1.8"],
-    "Sony" => ["FE 24-105mm F4", "FE 35mm F1.8"],
-    "SIGMA" => ["24-70mm F2.8 DG DN", "35mm F1.4 DG DN"],
-    "Tamron" => ["28-75mm F2.8 G2", "70-180mm F2.8"],
-    "Fujifilm" => ["XF 23mm F1.4", "XF 56mm F1.2"],
-    "Panasonic" => ["S 50mm F1.8", "S 24-105mm F4"],
+  clothing_by_brand = {
+    "ユニクロ" => ["ヒートテック Tシャツ", "エアリズムシャツ", "ウルトラライトダウン", "セルビッジジーンズ"],
+    "Nike" => ["エアマックス スニーカー", "Dri-FIT Tシャツ", "ランニングシューズ", "スポーツジャケット"],
   }
 
-  film_names = [
-    "Kodak Portra 400", "Kodak Tri-X 400", "Fujifilm Superia 400",
-    "Ilford HP5+", "Fujifilm Pro 400H", "Cinestill 800T"
-  ]
+  home_by_brand = {
+    "無印良品" => ["LEDデスクライト", "アロマディフューザー", "収納ボックス", "綿クッション"],
+    "IKEA" => ["テーブルランプ", "クッションカバー", "フォトフレーム", "収納バスケット"],
+  }
 
-  accessories = [
-    "Manfrotto Tripod", "SanDisk SDXC 128GB", "Peak Design Camera Strap",
-    "Lowepro Camera Bag", "Godox V1 Flash", "Rode VideoMicro Mic",
-    "Anker Battery Pack", "Kenko UV Filter 67mm"
+  food_by_brand = {
+    "スターバックス" => ["パイクプレイスロースト", "ハウスブレンド", "エスプレッソロースト", "抹茶ラテミックス"],
+  }
+
+  generic_items = [
+    "ワイヤレスイヤホン", "USB-Cケーブル", "スマホケース", "水筒",
+    "トートバッグ", "ノート", "ペンセット", "ハンドクリーム"
   ]
 
   brand = preferred_brand || brands.sample
@@ -619,33 +632,21 @@ def generate_random_camera_metadata(preferred_brand = nil)
   sku = "SKU-#{SecureRandom.hex(2).upcase}-#{SecureRandom.hex(2).upcase}"
 
   product_name_core = case category
-    when "Camera"
-      (camera_models_by_brand[brand] || ["Mirrorless Camera"]).sample
-    when "Lens"
-      (lenses_by_brand[brand] || ["50mm F1.8"]).sample
-    when "Film"
-      if preferred_brand
-        films_for_brand = film_names.select { |f| f.start_with?("#{brand} ") }
-        film = (films_for_brand.sample || film_names.sample)
-        # If we had to fallback to a different brand, update brand accordingly
-        brand = film.split.first
-        film
-      else
-        film = film_names.sample
-        brand = film.split.first
-        film
-      end
-    when "Accessory"
-      accessories.sample
+    when "家電"
+      (electronics_by_brand[brand] || ["ワイヤレスヘッドフォン"]).sample
+    when "衣料品"
+      (clothing_by_brand[brand] || ["コットン Tシャツ"]).sample
+    when "雑貨"
+      (home_by_brand[brand] || ["デコレーションクッション"]).sample
+    when "食品"
+      (food_by_brand[brand] || ["挽きたてコーヒー"]).sample
     else
-      "Camera Item"
+      generic_items.sample
   end
 
   product_name = brand ? "#{brand} #{product_name_core}" : product_name_core
   product_description = product_name
   image_url = "https://picsum.photos/seed/#{sku}/300/300"
-  film_name_value = film_names.sample
-  accessory_name_value = accessories.sample
 
   return {
     area: areas.sample,
@@ -656,8 +657,8 @@ def generate_random_camera_metadata(preferred_brand = nil)
     product_name: product_name,
     product_description: product_description,
     product_image: image_url,
-    film_name: film_name_value,
-    accessory_name: accessory_name_value,
+    film_name: generic_items.sample,
+    accessory_name: generic_items.sample,
   }
 end
 

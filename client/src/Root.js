@@ -23,7 +23,7 @@ export default function App() {
   return (
     <div className="stripe-page">
       {/* Header */}
-      <header className="stripe-header">
+      <header className="stripe-header" style={{ top: 0 }}>
         <div className="stripe-container">
           <div className="stripe-header-content">
             <div className="stripe-logo">

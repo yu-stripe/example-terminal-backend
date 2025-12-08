@@ -12,7 +12,7 @@ const TerminalSelector = ({ onTerminalSelected }) => {
   const [error, setError] = useState(null);
   const [isSelecting, setIsSelecting] = useState(false);
   
-  const { selectedTerminal, selectTerminal, clearTerminal } = useTerminal();
+  const { selectedTerminal, terminalReader, selectTerminal, clearTerminal } = useTerminal();
 
   const goHome = () => {
     navigate('/');
@@ -128,7 +128,7 @@ const TerminalSelector = ({ onTerminalSelected }) => {
           fontSize: '14px',
           zIndex: 1000
         }}>
-          ✓ Terminal selected: <strong>{selectedTerminal}</strong>
+          ✓ Terminal selected: <strong>{terminalReader?.label || selectedTerminal}</strong>
         </div>
       )}
       {/* Spacer for fixed status bar */}

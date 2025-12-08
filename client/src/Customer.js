@@ -27,7 +27,7 @@ export default function Customer(prop) {
   const [collectedEmail, setCollectedEmail] = useState('');
   const [emailCollectionStatus, setEmailCollectionStatus] = useState('');
 
-  const { selectedTerminal } = useTerminal();
+  const { selectedTerminal, terminalReader } = useTerminal();
 
   const colorForId = (id) => {
     try {
@@ -476,7 +476,7 @@ export default function Customer(prop) {
           fontSize: '14px',
           zIndex: 1000
         }}>
-          ✓ Terminal selected: <strong>{selectedTerminal}</strong>
+          ✓ Terminal selected: <strong>{terminalReader?.label || selectedTerminal}</strong>
         </div>
       )}
       {/* Spacer for fixed status bar */}
