@@ -1563,18 +1563,21 @@ post '/webhook' do
       payment_method_id = payment_intent.payment_method
 
       begin
-        # Retrieve the payment method to check if it's already attached
+        # Retrieve the payment method to check its type
         pm = Stripe::PaymentMethod.retrieve(payment_method_id)
 
-        # If not attached to this customer, attach it
-        if pm.customer != customer_id
+        # Only try to attach non-card_present payment methods
+        # card_present payment methods are automatically attached when created with setup_future_usage
+        if pm.type != 'card_present' && pm.customer != customer_id
           log_info("Attaching payment method #{payment_method_id} to customer #{customer_id}")
           Stripe::PaymentMethod.attach(payment_method_id, { customer: customer_id })
+        elsif pm.type == 'card_present'
+          log_info("Card present payment method #{payment_method_id} - skipping attach (already attached)")
         else
           log_info("Payment method #{payment_method_id} already attached to customer #{customer_id}")
         end
 
-        # Set as default payment method
+        # Set as default payment method (works for all payment method types)
         log_info("Setting payment method #{payment_method_id} as default for customer #{customer_id}")
         Stripe::Customer.update(customer_id, {
           invoice_settings: { default_payment_method: payment_method_id }
