@@ -1034,14 +1034,14 @@ post '/api/terminal/:id/collect_confirmation' do
         type: 'selection',
         custom_text: {
           title: 'リーダー確認',
-          description: "Reader: #{reader_label}\nID: #{reader_id}",
-          submit_button: 'OK',
+          description: "Reader: #{reader_label}\nID: #{reader_id}"
         },
         required: true,
         selection: {
           choices: [{
-            value: 'confirmed',
-            label: '確認しました'
+            style: 'primary',
+            id: 'confirmed',
+            text: '確認しました'
           }]
         }
       }]

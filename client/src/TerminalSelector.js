@@ -82,21 +82,7 @@ const TerminalSelector = ({ onTerminalSelected }) => {
     setConfirmationStatus('showing');
 
     try {
-      // First, ensure the server session has the correct terminal selected
-      const syncResponse = await fetch(`${API_URL}/api/terminal/select`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ reader_id: selectedTerminal }),
-      });
-
-      if (!syncResponse.ok) {
-        throw new Error('Failed to sync terminal selection with server');
-      }
-
-      // Now use the convenience endpoint that uses the selected terminal
-      const r = await fetch(`${API_URL}/api/terminal/collect_confirmation`, {
+      const r = await fetch(`${API_URL}/api/terminal/${selectedTerminal}/collect_confirmation`, {
         method: "POST",
         headers: {
           'Content-Type': 'application/json',
@@ -121,8 +107,7 @@ const TerminalSelector = ({ onTerminalSelected }) => {
 
   const pollForConfirmation = () => {
     const pollInterval = setInterval(() => {
-      // Use the convenience endpoint that uses selected terminal from session
-      fetch(`${API_URL}/api/terminal/collected_data`)
+      fetch(`${API_URL}/api/terminal/${selectedTerminal}/collected_data`)
         .then(async(r) => {
           if (r.ok) {
             const data = await r.json();
