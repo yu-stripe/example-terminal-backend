@@ -1430,7 +1430,42 @@ post '/webhook' do
     
     # Print the full reader object for debugging
     p reader
-    
+
+  when 'payment_intent.succeeded'
+    payment_intent = event.data.object # contains a Stripe::PaymentIntent
+    log_info("Payment intent succeeded: #{payment_intent.id}")
+
+    # Check if payment intent has both customer and payment method
+    if payment_intent.customer && payment_intent.payment_method
+      customer_id = payment_intent.customer
+      payment_method_id = payment_intent.payment_method
+
+      begin
+        # Retrieve the payment method to check if it's already attached
+        pm = Stripe::PaymentMethod.retrieve(payment_method_id)
+
+        # If not attached to this customer, attach it
+        if pm.customer != customer_id
+          log_info("Attaching payment method #{payment_method_id} to customer #{customer_id}")
+          Stripe::PaymentMethod.attach(payment_method_id, { customer: customer_id })
+        else
+          log_info("Payment method #{payment_method_id} already attached to customer #{customer_id}")
+        end
+
+        # Set as default payment method
+        log_info("Setting payment method #{payment_method_id} as default for customer #{customer_id}")
+        Stripe::Customer.update(customer_id, {
+          invoice_settings: { default_payment_method: payment_method_id }
+        })
+
+        log_info("Successfully set payment method #{payment_method_id} as default for customer #{customer_id}")
+      rescue Stripe::StripeError => e
+        log_info("Error processing payment method for customer: #{e.message}")
+      end
+    else
+      log_info("Payment intent missing customer or payment method")
+    end
+
   when 'payment_method.attached'
     payment_method = event.data.object # contains a Stripe::PaymentMethod
     log_info("Payment method attached: #{payment_method.id}")
