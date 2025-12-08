@@ -3,11 +3,8 @@ import { useParams, useNavigate } from "react-router-dom";
 import { Link } from 'react-router-dom';
 import TimeFormatter from "./TimeFormatter"
 import { API_URL } from './index.js'
-import QRCode from "react-qr-code";
 import PosTerminalCard from './components/PosTerminalCard';
 import MotoTerminalCard from './components/MotoTerminalCard';
-import QrPaymentCard from './components/QrPaymentCard';
-import OnlinePaymentCard from './components/OnlinePaymentCard';
 import PaymentIntentsCard from './components/PaymentIntentsCard';
 import SubscriptionsCard from './components/SubscriptionsCard';
 import { useTerminal } from './context/TerminalContext';
@@ -19,9 +16,7 @@ export default function Customer(prop) {
   const navigate = useNavigate();
   const [customer, setCustomer] = useState({});
   const [paymentIntents, setPaymentIntents] = useState({});
-  const [piCust, setPiCust] = useState(null);
   const [pI, setPi] = useState(null);
-  const [checkoutUrl, setCheckoutUrl] = useState('');
 
   const [amount, setAmount] = useState('');
   const [collectedEmail, setCollectedEmail] = useState('');
@@ -368,38 +363,6 @@ export default function Customer(prop) {
     }
   }
 
-  let createPaymentIntentQR = () => {
-    fetch(`${API_URL}/api/customers/${id}/payment_intent`, {
-      method: "POST",
-      body: JSON.stringify({amount: amount })
-    }).then(async(r) => {
-      const pi = await r.json();
-      setPiCust(`${pi.id},${id}`)
-    });
-  }
-
-  let createCheckoutSession = async () => {
-    try {
-      const r = await fetch(`${API_URL}/api/customers/${id}/checkout_session`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amount: amount })
-      });
-      if (!r.ok) {
-        const err = await r.json().catch(() => ({ error: 'Unknown error' }));
-        alert(`Failed to create checkout session: ${err.error || r.statusText}`);
-        return;
-      }
-      const session = await r.json();
-      if (session.url) {
-        setCheckoutUrl(session.url);
-      } else {
-        alert('No session URL returned.');
-      }
-    } catch (e) {
-      alert(`Error creating checkout session: ${e.message}`);
-    }
-  }
 
   const getStatusBadge = (pi) => {
     const refundState = getRefundInfo(pi).status;
@@ -754,7 +717,7 @@ export default function Customer(prop) {
           </div>
 
           {/* Payment Actions */}
-          <div className="stripe-grid stripe-grid-3 stripe-mt-6">
+          <div className="stripe-grid stripe-grid-2 stripe-mt-6">
             <PosTerminalCard
               amount={amount}
               setAmount={setAmount}
@@ -766,18 +729,6 @@ export default function Customer(prop) {
               setAmount={setAmount}
               onSubmitCollect={collectMoto}
               onCancel={cannel}
-            />
-            <QrPaymentCard
-              amount={amount}
-              setAmount={setAmount}
-              piCust={piCust}
-              onGenerate={createPaymentIntentQR}
-            />
-            <OnlinePaymentCard
-              amount={amount}
-              setAmount={setAmount}
-              checkoutUrl={checkoutUrl}
-              onCreate={createCheckoutSession}
             />
           </div>
         </div>

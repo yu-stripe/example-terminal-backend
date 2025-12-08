@@ -103,7 +103,7 @@ export default function Customers() {
       const r = await fetch(`${API_URL}/api/customers`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: '仮ユーザー' })
+        body: JSON.stringify({})
       });
       if (!r.ok) {
         const err = await r.json().catch(() => ({ error: 'Unknown error' }));

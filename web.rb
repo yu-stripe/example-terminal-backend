@@ -14,22 +14,6 @@ configure do
   enable :cross_origin
 end
 
-def get_customer_brand(customer_id)
-  return nil if customer_id.nil? || customer_id.to_s.empty?
-  begin
-    customer = Stripe::Customer.retrieve(customer_id)
-    meta = customer.respond_to?(:metadata) ? customer.metadata : nil
-    brand_value = nil
-    if meta
-      # Stripe metadata behaves like a hash with string keys
-      brand_value = meta['brand'] || (meta[:brand] rescue nil)
-    end
-    return (brand_value && !brand_value.to_s.empty?) ? brand_value : nil
-  rescue Stripe::StripeError => e
-    log_info("Failed to fetch customer brand: #{e.message}")
-    return nil
-  end
-end
 
 before do
   response.headers['Access-Control-Allow-Origin'] = '*'
@@ -591,60 +575,15 @@ def generate_random_camera_metadata(preferred_brand = nil)
   floors = ["B1F", "1F", "2F", "3F", "4F", "5F"]
 
   category_options = {
-    "家電" => ["スマートフォン", "タブレット", "ノートパソコン", "ヘッドフォン", "スピーカー"],
-    "衣料品" => ["Tシャツ", "ジーンズ", "ジャケット", "スニーカー", "ワンピース"],
-    "雑貨" => ["ランプ", "クッション", "ラグ", "キャンドル", "植木鉢"],
-    "食品" => ["コーヒー", "紅茶", "スナック", "チョコレート", "ジュース"],
+    "家電" => ["スマートフォン", "タブレット", "ノートパソコン", "ヘッドフォン", "スピーカー", "デジタルカメラ", "ワイヤレスイヤホン", "電子レンジ", "炊飯器", "掃除機"],
+    "衣料品" => ["Tシャツ", "ジーンズ", "ジャケット", "スニーカー", "ワンピース", "セーター", "コート", "シャツ", "パンツ", "スカート"],
+    "雑貨" => ["ランプ", "クッション", "ラグ", "キャンドル", "植木鉢", "フォトフレーム", "収納ボックス", "花瓶", "時計", "鏡"],
+    "食品" => ["コーヒー", "紅茶", "スナック", "チョコレート", "ジュース", "クッキー", "パスタ", "調味料", "缶詰", "お茶"],
   }
 
-  brands = [
-    "Apple", "Samsung", "Sony", "ユニクロ", "Nike", "無印良品", "スターバックス", "IKEA", "Panasonic"
-  ]
-
-  electronics_by_brand = {
-    "Apple" => ["iPhone 15", "iPad Air", "MacBook Pro", "AirPods Pro"],
-    "Samsung" => ["Galaxy S24", "Galaxy Tab S9", "Galaxy Buds"],
-    "Sony" => ["WH-1000XM5 ヘッドフォン", "SRS-XB43 スピーカー", "Xperia 1 V"],
-    "Panasonic" => ["完全ワイヤレスイヤホン", "ポータブルスピーカー"],
-  }
-
-  clothing_by_brand = {
-    "ユニクロ" => ["ヒートテック Tシャツ", "エアリズムシャツ", "ウルトラライトダウン", "セルビッジジーンズ"],
-    "Nike" => ["エアマックス スニーカー", "Dri-FIT Tシャツ", "ランニングシューズ", "スポーツジャケット"],
-  }
-
-  home_by_brand = {
-    "無印良品" => ["LEDデスクライト", "アロマディフューザー", "収納ボックス", "綿クッション"],
-    "IKEA" => ["テーブルランプ", "クッションカバー", "フォトフレーム", "収納バスケット"],
-  }
-
-  food_by_brand = {
-    "スターバックス" => ["パイクプレイスロースト", "ハウスブレンド", "エスプレッソロースト", "抹茶ラテミックス"],
-  }
-
-  generic_items = [
-    "ワイヤレスイヤホン", "USB-Cケーブル", "スマホケース", "水筒",
-    "トートバッグ", "ノート", "ペンセット", "ハンドクリーム"
-  ]
-
-  brand = preferred_brand || brands.sample
   category = category_options.keys.sample
   sku = "SKU-#{SecureRandom.hex(2).upcase}-#{SecureRandom.hex(2).upcase}"
-
-  product_name_core = case category
-    when "家電"
-      (electronics_by_brand[brand] || ["ワイヤレスヘッドフォン"]).sample
-    when "衣料品"
-      (clothing_by_brand[brand] || ["コットン Tシャツ"]).sample
-    when "雑貨"
-      (home_by_brand[brand] || ["デコレーションクッション"]).sample
-    when "食品"
-      (food_by_brand[brand] || ["挽きたてコーヒー"]).sample
-    else
-      generic_items.sample
-  end
-
-  product_name = brand ? "#{brand} #{product_name_core}" : product_name_core
+  product_name = category_options[category].sample
   product_description = product_name
   image_url = "https://picsum.photos/seed/#{sku}/300/300"
 
@@ -653,30 +592,17 @@ def generate_random_camera_metadata(preferred_brand = nil)
     sku: sku,
     floor: floors.sample,
     category: category,
-    brand: brand,
+    brand: nil,
     product_name: product_name,
     product_description: product_description,
     product_image: image_url,
-    film_name: generic_items.sample,
-    accessory_name: generic_items.sample,
   }
 end
 
 def build_purchase_description(metadata)
   begin
-
-    brand_value = metadata[:brand] || metadata['brand']
     product_name_value = metadata[:product_name] || metadata['product_name']
-    item_name = product_name_value
-    if brand_value && item_name && item_name.start_with?("#{brand_value} ")
-      item_name = item_name.sub(/^#{Regexp.escape(brand_value)}\s+/, '')
-    end
-    
-    if brand_value && item_name
-      return "#{brand_value} #{item_name}"
-    else
-      return "#{product_name_value}"
-    end
+    return product_name_value || '購入'
   rescue => e
     return '購入'
   end
@@ -685,23 +611,18 @@ end
 def update_customer_metadata_with_brand_label(customer_id, metadata)
   begin
     return if customer_id.nil? || customer_id.to_s.empty? || metadata.nil?
-    brand_value = metadata[:brand] || metadata['brand']
     label_value = metadata[:label] || metadata['label']
-    update_meta = {}
-    update_meta[:brand] = brand_value if brand_value
-    update_meta[:label] = label_value if label_value
-    return if update_meta.empty?
-    Stripe::Customer.update(customer_id, { metadata: update_meta })
+    return if label_value.nil? || label_value.to_s.empty?
+    Stripe::Customer.update(customer_id, { metadata: { label: label_value } })
   rescue Stripe::StripeError => e
-    log_info("Failed to update customer metadata with brand/label: #{e.message}")
+    log_info("Failed to update customer metadata with label: #{e.message}")
   end
 end
 
 post '/api/customers/:id/payment_intent' do
   req = JSON.parse(request.body.read)
   amount = req['amount']
-  brand_override = get_customer_brand(params[:id])
-  metadata = generate_random_camera_metadata(brand_override)
+  metadata = generate_random_camera_metadata
   description_str = build_purchase_description(metadata)
 
   payment_intent = Stripe::PaymentIntent.create(
@@ -1009,8 +930,7 @@ post '/api/terminal/:id/payment_intent' do
   customer = req['customer']
   amount = req['amount']
 
-  brand_override = get_customer_brand(customer)
-  metadata = generate_random_camera_metadata(brand_override)
+  metadata = generate_random_camera_metadata
   description_str = build_purchase_description(metadata)
 
   intent = Stripe::PaymentIntent.create({
@@ -1034,8 +954,7 @@ post '/api/terminal/:id/payment_intent_moto' do
   customer = req['customer']
   amount = req['amount']
 
-  brand_override = get_customer_brand(customer)
-  metadata = generate_random_camera_metadata(brand_override)
+  metadata = generate_random_camera_metadata
   description_str = build_purchase_description(metadata)
 
   intent = Stripe::PaymentIntent.create({
@@ -1336,8 +1255,7 @@ post '/api/customers/:id/checkout_session' do
   customer_id = params[:id]
 
   begin
-    brand_override = get_customer_brand(customer_id)
-    metadata = generate_random_camera_metadata(brand_override)
+    metadata = generate_random_camera_metadata
     description_str = build_purchase_description(metadata)
 
     session = Stripe::Checkout::Session.create(
