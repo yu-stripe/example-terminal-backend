@@ -77,7 +77,7 @@ export default function SubscriptionsCard({ customerId }) {
     return new Intl.NumberFormat('ja-JP', {
       style: 'currency',
       currency: currency.toUpperCase(),
-    }).format(amount / 100);
+    }).format(amount);
   };
 
   const formatInterval = (interval, intervalCount) => {
@@ -216,19 +216,6 @@ export default function SubscriptionsCard({ customerId }) {
                       sub.items.data[0].price.recurring.interval_count
                     )}
                   </span>
-                </div>
-              </div>
-
-              <div>
-                <div style={{ color: 'var(--stripe-gray-600)', fontSize: '11px', marginBottom: '2px' }}>
-                  次回請求 / Next Billing
-                </div>
-                <div style={{ fontWeight: '600', color: 'var(--stripe-gray-900)' }}>
-                  {sub.status === 'active' || sub.status === 'trialing' ? (
-                    <TimeFormatter timestamp={sub.current_period_end} />
-                  ) : (
-                    '—'
-                  )}
                 </div>
               </div>
 
