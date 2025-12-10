@@ -425,6 +425,32 @@ get '/api/customers/:id/subscriptions' do
   end
 end
 
+# Create subscription for customer
+post '/api/customers/:id/subscriptions' do
+  begin
+    req = JSON.parse(request.body.read) rescue {}
+    price_id = req['price_id'] || 'price_1SGCRVRKgCd0RczXhPhkfWtO'
+
+    subscription = Stripe::Subscription.create({
+      customer: params[:id],
+      items: [{
+        price: price_id
+      }]
+    })
+
+    log_info("Subscription created: #{subscription.id} for customer #{params[:id]}")
+    content_type :json
+    status 200
+    return subscription.to_json
+  rescue Stripe::StripeError => e
+    status 402
+    return log_info("Error creating subscription: #{e.message}")
+  rescue => e
+    status 400
+    return { error: e.message }.to_json
+  end
+end
+
 def extract_fingerprint_from_payment_method(pm)
   begin
     # pm can be an object or id; normalize to object

@@ -5,6 +5,7 @@ import TimeFormatter from '../TimeFormatter';
 export default function SubscriptionsCard({ customerId }) {
   const [subscriptions, setSubscriptions] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [creating, setCreating] = useState(false);
 
   useEffect(() => {
     if (customerId) {
@@ -24,6 +25,35 @@ export default function SubscriptionsCard({ customerId }) {
       console.error('Error fetching subscriptions:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const createSubscription = async () => {
+    if (creating) return;
+
+    try {
+      setCreating(true);
+      const response = await fetch(`${API_URL}/api/customers/${customerId}/subscriptions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({})
+      });
+
+      if (response.ok) {
+        const subscription = await response.json();
+        alert(`サブスクリプションを作成しました: ${subscription.id}`);
+        fetchSubscriptions(); // Refresh the list
+      } else {
+        const error = await response.json().catch(() => ({ error: 'Unknown error' }));
+        alert(`サブスクリプション作成に失敗しました: ${error.error || response.statusText}`);
+      }
+    } catch (error) {
+      console.error('Error creating subscription:', error);
+      alert(`エラー: ${error.message}`);
+    } finally {
+      setCreating(false);
     }
   };
 
@@ -81,8 +111,18 @@ export default function SubscriptionsCard({ customerId }) {
     return (
       <div className="stripe-card stripe-mt-6">
         <div className="stripe-card-header">
-          <h3 className="stripe-card-title">サブスクリプション</h3>
-          <p className="stripe-card-subtitle">Subscriptions</p>
+          <div style={{ flex: 1 }}>
+            <h3 className="stripe-card-title">サブスクリプション</h3>
+            <p className="stripe-card-subtitle">Subscriptions</p>
+          </div>
+          <button
+            onClick={createSubscription}
+            disabled={creating}
+            className="stripe-button stripe-button-primary"
+            style={{ fontSize: '14px', padding: '8px 16px' }}
+          >
+            {creating ? '作成中...' : 'サブスクリプション作成'}
+          </button>
         </div>
         <div style={{ padding: '20px', textAlign: 'center', color: 'var(--stripe-gray-600)' }}>
           サブスクリプションがありません
@@ -94,8 +134,18 @@ export default function SubscriptionsCard({ customerId }) {
   return (
     <div className="stripe-card stripe-mt-6">
       <div className="stripe-card-header">
-        <h3 className="stripe-card-title">サブスクリプション</h3>
-        <p className="stripe-card-subtitle">{subscriptions.length} Subscriptions</p>
+        <div style={{ flex: 1 }}>
+          <h3 className="stripe-card-title">サブスクリプション</h3>
+          <p className="stripe-card-subtitle">{subscriptions.length} Subscriptions</p>
+        </div>
+        <button
+          onClick={createSubscription}
+          disabled={creating}
+          className="stripe-button stripe-button-primary"
+          style={{ fontSize: '14px', padding: '8px 16px' }}
+        >
+          {creating ? '作成中...' : 'サブスクリプション作成'}
+        </button>
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', padding: '0 0 16px 0' }}>
