@@ -22,32 +22,66 @@ export default function PaymentIntentPage() {
   useEffect(() => {
     fetchPI();
 
-    // Connect to SSE for real-time updates
-    const eventSource = new EventSource(`${API_URL}/events`);
+    let eventSource = null;
+    let reconnectTimeout = null;
+    let isUnmounted = false;
 
-    eventSource.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
+    const connectSSE = () => {
+      if (isUnmounted) return;
 
-        // If this is a payment_intent.succeeded event for our payment intent
-        if (data.event_type === 'payment_intent.succeeded' && data.object_id === id) {
-          console.log('Received webhook event for payment intent:', id);
-          // Refresh the payment intent data
-          fetchPI();
+      console.log('Connecting to SSE...');
+      eventSource = new EventSource(`${API_URL}/events`);
+
+      eventSource.onopen = () => {
+        console.log('SSE connection established');
+      };
+
+      eventSource.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+
+          // Log connection confirmation
+          if (data.event_type === 'connected') {
+            console.log('SSE connection confirmed');
+            return;
+          }
+
+          // If this is a payment_intent.succeeded event for our payment intent
+          if (data.event_type === 'payment_intent.succeeded' && data.object_id === id) {
+            console.log('Received webhook event for payment intent:', id);
+            // Refresh the payment intent data
+            fetchPI();
+          }
+        } catch (error) {
+          console.error('Error parsing SSE message:', error);
         }
-      } catch (error) {
-        console.error('Error parsing SSE message:', error);
-      }
+      };
+
+      eventSource.onerror = (error) => {
+        console.error('SSE connection error');
+        eventSource.close();
+
+        // Attempt to reconnect after 3 seconds
+        if (!isUnmounted) {
+          reconnectTimeout = setTimeout(() => {
+            console.log('Attempting to reconnect SSE...');
+            connectSSE();
+          }, 3000);
+        }
+      };
     };
 
-    eventSource.onerror = (error) => {
-      console.error('SSE error:', error);
-      eventSource.close();
-    };
+    connectSSE();
 
     // Cleanup on unmount
     return () => {
-      eventSource.close();
+      isUnmounted = true;
+      if (eventSource) {
+        eventSource.close();
+      }
+      if (reconnectTimeout) {
+        clearTimeout(reconnectTimeout);
+      }
     };
   }, [id]);
 

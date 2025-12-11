@@ -86,18 +86,48 @@ get '/token' do
 end
 
 # SSE endpoint for real-time webhook events
-get '/events', provides: 'text/event-stream' do
+get '/events' do
+  content_type 'text/event-stream'
+  headers 'Cache-Control' => 'no-cache',
+          'Connection' => 'keep-alive',
+          'Access-Control-Allow-Origin' => '*',
+          'X-Accel-Buffering' => 'no'
+
   stream :keep_open do |out|
     $webhook_subscribers << out
     log_info("New SSE subscriber connected. Total: #{$webhook_subscribers.length}")
 
     # Send initial connection message
-    out << "data: #{({event_type: 'connected', timestamp: Time.now.to_i}).to_json}\n\n"
+    begin
+      out << "data: #{({event_type: 'connected', timestamp: Time.now.to_i}).to_json}\n\n"
+    rescue => e
+      log_info("Error sending initial message: #{e.message}")
+    end
 
-    # Keep connection alive
+    # Keep connection alive with heartbeat
+    heartbeat = Thread.new do
+      loop do
+        sleep 15
+        begin
+          out << ":heartbeat\n\n"
+        rescue => e
+          log_info("Heartbeat failed: #{e.message}")
+          break
+        end
+      end
+    end
+
+    # Cleanup on disconnect
     out.callback {
+      heartbeat.kill if heartbeat
       $webhook_subscribers.delete(out)
       log_info("SSE subscriber disconnected. Total: #{$webhook_subscribers.length}")
+    }
+
+    out.errback {
+      heartbeat.kill if heartbeat
+      $webhook_subscribers.delete(out)
+      log_info("SSE subscriber error. Total: #{$webhook_subscribers.length}")
     }
   end
 end
