@@ -12,13 +12,43 @@ export default function PaymentIntentPage() {
   const [candidates, setCandidates] = useState([]);
   const [status, setStatus] = useState('');
 
+  const fetchPI = async () => {
+    const r = await fetch(`${API_URL}/api/payment_intents/${id}`);
+    const data = await r.json();
+    setPi(data);
+    return data;
+  };
+
   useEffect(() => {
-    const fetchPI = async () => {
-      const r = await fetch(`${API_URL}/api/payment_intents/${id}`);
-      const data = await r.json();
-      setPi(data);
-    };
     fetchPI();
+
+    // Connect to SSE for real-time updates
+    const eventSource = new EventSource(`${API_URL}/events`);
+
+    eventSource.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+
+        // If this is a payment_intent.succeeded event for our payment intent
+        if (data.event_type === 'payment_intent.succeeded' && data.object_id === id) {
+          console.log('Received webhook event for payment intent:', id);
+          // Refresh the payment intent data
+          fetchPI();
+        }
+      } catch (error) {
+        console.error('Error parsing SSE message:', error);
+      }
+    };
+
+    eventSource.onerror = (error) => {
+      console.error('SSE error:', error);
+      eventSource.close();
+    };
+
+    // Cleanup on unmount
+    return () => {
+      eventSource.close();
+    };
   }, [id]);
 
   // Auto-search candidates once PI is loaded

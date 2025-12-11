@@ -32,6 +32,29 @@ endpoint_secret = ENV['STRIPE_ENDPOINT_SECRET']
 
 #Stripe.api_version = '2024-04-10; custom_checkout_beta=v1'
 
+# Simple in-memory pub/sub for webhook events
+$webhook_subscribers = []
+
+def broadcast_webhook_event(event_type, object_id, data = {})
+  message = {
+    event_type: event_type,
+    object_id: object_id,
+    timestamp: Time.now.to_i,
+    data: data
+  }.to_json
+
+  $webhook_subscribers.each do |subscriber|
+    begin
+      subscriber << "data: #{message}\n\n"
+    rescue => e
+      log_info("Failed to send to subscriber: #{e.message}")
+    end
+  end
+
+  # Clean up closed connections
+  $webhook_subscribers.delete_if { |s| s.closed? }
+end
+
 def log_info(message)
   puts "\n" + message + "\n\n"
   return message
@@ -58,8 +81,25 @@ end
 
 get '/token' do
   return {
-    public_key: ENV['STRIPE_PUBLISHABLE_KEY'] 
+    public_key: ENV['STRIPE_PUBLISHABLE_KEY']
   }.to_json
+end
+
+# SSE endpoint for real-time webhook events
+get '/events', provides: 'text/event-stream' do
+  stream :keep_open do |out|
+    $webhook_subscribers << out
+    log_info("New SSE subscriber connected. Total: #{$webhook_subscribers.length}")
+
+    # Send initial connection message
+    out << "data: #{({event_type: 'connected', timestamp: Time.now.to_i}).to_json}\n\n"
+
+    # Keep connection alive
+    out.callback {
+      $webhook_subscribers.delete(out)
+      log_info("SSE subscriber disconnected. Total: #{$webhook_subscribers.length}")
+    }
+  end
 end
 
 # This endpoint registers a Verifone P400 reader to your Stripe account.
@@ -1582,6 +1622,12 @@ post '/webhook' do
   when 'payment_intent.succeeded'
     payment_intent = event.data.object # contains a Stripe::PaymentIntent
     log_info("Payment intent succeeded: #{payment_intent.id}")
+
+    # Broadcast webhook event to connected clients
+    broadcast_webhook_event('payment_intent.succeeded', payment_intent.id, {
+      status: payment_intent.status,
+      customer: payment_intent.customer
+    })
 
     # Check if payment intent has both customer and payment method
     if payment_intent.customer && payment_intent.payment_method
