@@ -21,113 +21,39 @@ export default function PaymentIntentPage() {
 
   useEffect(() => {
     fetchPI();
+  }, [id]);
 
-    let eventSource = null;
-    let reconnectTimeout = null;
-    let pollInterval = null;
-    let isUnmounted = false;
-    let sseFailCount = 0;
+  // Auto-refresh when payment intent is not in terminal state
+  useEffect(() => {
+    if (!pi) return;
 
-    const startPolling = () => {
-      if (pollInterval || isUnmounted) return;
+    // If PI is processing or requires_action, poll for updates
+    if (pi.status === 'processing' || pi.status === 'requires_action' || pi.status === 'requires_payment_method' || pi.status === 'requires_capture') {
+      console.log(`Payment intent is ${pi.status}, starting polling...`);
 
-      console.log('Starting polling fallback (SSE unavailable)');
-      pollInterval = setInterval(async () => {
+      const pollInterval = setInterval(async () => {
+        console.log('Polling for payment intent updates...');
         const updatedPi = await fetchPI();
+
         // Stop polling if status changes to a terminal state
         if (updatedPi && (updatedPi.status === 'succeeded' || updatedPi.status === 'canceled')) {
-          if (pollInterval) {
-            clearInterval(pollInterval);
-            pollInterval = null;
-          }
-        }
-      }, 3000); // Poll every 3 seconds
-
-      // Stop polling after 2 minutes
-      setTimeout(() => {
-        if (pollInterval) {
+          console.log(`Payment intent status changed to ${updatedPi.status}, stopping polling`);
           clearInterval(pollInterval);
-          pollInterval = null;
         }
-      }, 120000);
-    };
+      }, 2000); // Poll every 2 seconds
 
-    const connectSSE = () => {
-      if (isUnmounted) return;
-
-      // If SSE has failed too many times, fall back to polling
-      if (sseFailCount >= 3) {
-        console.log('SSE failed too many times, using polling instead');
-        startPolling();
-        return;
-      }
-
-      console.log('Connecting to SSE...');
-      eventSource = new EventSource(`${API_URL}/events`);
-
-      eventSource.onopen = () => {
-        console.log('SSE connection established');
-        sseFailCount = 0; // Reset fail count on successful connection
-      };
-
-      eventSource.onmessage = (event) => {
-        try {
-          const data = JSON.parse(event.data);
-
-          // Log connection confirmation
-          if (data.event_type === 'connected') {
-            console.log('SSE connection confirmed');
-            return;
-          }
-
-          // If this is a payment_intent.succeeded event for our payment intent
-          if (data.event_type === 'payment_intent.succeeded' && data.object_id === id) {
-            console.log('Received webhook event for payment intent:', id);
-            // Refresh the payment intent data
-            fetchPI();
-          }
-        } catch (error) {
-          console.error('Error parsing SSE message:', error);
-        }
-      };
-
-      eventSource.onerror = (error) => {
-        console.error('SSE connection error');
-        eventSource.close();
-        sseFailCount++;
-
-        // Attempt to reconnect after 3 seconds, or fall back to polling
-        if (!isUnmounted) {
-          reconnectTimeout = setTimeout(() => {
-            if (sseFailCount >= 3) {
-              console.log('SSE repeatedly failing, switching to polling');
-              startPolling();
-            } else {
-              console.log(`Attempting to reconnect SSE... (attempt ${sseFailCount})`);
-              connectSSE();
-            }
-          }, 3000);
-        }
-      };
-    };
-
-    // Try SSE first
-    connectSSE();
-
-    // Cleanup on unmount
-    return () => {
-      isUnmounted = true;
-      if (eventSource) {
-        eventSource.close();
-      }
-      if (reconnectTimeout) {
-        clearTimeout(reconnectTimeout);
-      }
-      if (pollInterval) {
+      // Stop polling after 3 minutes
+      const timeout = setTimeout(() => {
+        console.log('Polling timeout reached, stopping');
         clearInterval(pollInterval);
-      }
-    };
-  }, [id]);
+      }, 180000);
+
+      return () => {
+        clearInterval(pollInterval);
+        clearTimeout(timeout);
+      };
+    }
+  }, [pi?.status]);
 
   // Auto-search candidates once PI is loaded
   useEffect(() => {
