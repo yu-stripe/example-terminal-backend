@@ -24,16 +24,50 @@ export default function PaymentIntentPage() {
 
     let eventSource = null;
     let reconnectTimeout = null;
+    let pollInterval = null;
     let isUnmounted = false;
+    let sseFailCount = 0;
+
+    const startPolling = () => {
+      if (pollInterval || isUnmounted) return;
+
+      console.log('Starting polling fallback (SSE unavailable)');
+      pollInterval = setInterval(async () => {
+        const updatedPi = await fetchPI();
+        // Stop polling if status changes to a terminal state
+        if (updatedPi && (updatedPi.status === 'succeeded' || updatedPi.status === 'canceled')) {
+          if (pollInterval) {
+            clearInterval(pollInterval);
+            pollInterval = null;
+          }
+        }
+      }, 3000); // Poll every 3 seconds
+
+      // Stop polling after 2 minutes
+      setTimeout(() => {
+        if (pollInterval) {
+          clearInterval(pollInterval);
+          pollInterval = null;
+        }
+      }, 120000);
+    };
 
     const connectSSE = () => {
       if (isUnmounted) return;
+
+      // If SSE has failed too many times, fall back to polling
+      if (sseFailCount >= 3) {
+        console.log('SSE failed too many times, using polling instead');
+        startPolling();
+        return;
+      }
 
       console.log('Connecting to SSE...');
       eventSource = new EventSource(`${API_URL}/events`);
 
       eventSource.onopen = () => {
         console.log('SSE connection established');
+        sseFailCount = 0; // Reset fail count on successful connection
       };
 
       eventSource.onmessage = (event) => {
@@ -60,17 +94,24 @@ export default function PaymentIntentPage() {
       eventSource.onerror = (error) => {
         console.error('SSE connection error');
         eventSource.close();
+        sseFailCount++;
 
-        // Attempt to reconnect after 3 seconds
+        // Attempt to reconnect after 3 seconds, or fall back to polling
         if (!isUnmounted) {
           reconnectTimeout = setTimeout(() => {
-            console.log('Attempting to reconnect SSE...');
-            connectSSE();
+            if (sseFailCount >= 3) {
+              console.log('SSE repeatedly failing, switching to polling');
+              startPolling();
+            } else {
+              console.log(`Attempting to reconnect SSE... (attempt ${sseFailCount})`);
+              connectSSE();
+            }
           }, 3000);
         }
       };
     };
 
+    // Try SSE first
     connectSSE();
 
     // Cleanup on unmount
@@ -81,6 +122,9 @@ export default function PaymentIntentPage() {
       }
       if (reconnectTimeout) {
         clearTimeout(reconnectTimeout);
+      }
+      if (pollInterval) {
+        clearInterval(pollInterval);
       }
     };
   }, [id]);
