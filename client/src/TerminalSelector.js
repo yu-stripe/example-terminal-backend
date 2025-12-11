@@ -75,7 +75,7 @@ const TerminalSelector = ({ onTerminalSelected }) => {
 
   const showReaderConfirmation = async () => {
     if (!selectedTerminal) {
-      alert('Terminal not selected. Please select a terminal first.');
+      alert('ターミナルが選択されていません。先にターミナルを選択してください。');
       return;
     }
 

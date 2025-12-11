@@ -35,7 +35,7 @@ export default function Customers() {
   const collectGuest = async (e) => {
     e.preventDefault();
     if (!selectedTerminal) {
-      alert('Terminal not selected. Please select a terminal first.');
+      alert('ターミナルが選択されていません。先にターミナルを選択してください。');
       return;
     }
     try {
@@ -72,7 +72,7 @@ export default function Customers() {
 
   const cannel = async () => {
     if (!selectedTerminal) {
-      alert('Terminal not selected. Please select a terminal first.');
+      alert('ターミナルが選択されていません。先にターミナルを選択してください。');
       return;
     }
     try {
@@ -135,7 +135,7 @@ export default function Customers() {
           fontSize: '14px',
           zIndex: 1000
         }}>
-          ⚠️ No terminal selected. <Link to="/terminal" style={{ color: 'white', textDecoration: 'underline' }}>Select a terminal</Link> to use terminal features.
+          ⚠️ ターミナルが選択されていません。<Link to="/terminal" style={{ color: 'white', textDecoration: 'underline' }}>ターミナルを選択</Link>してください。
         </div>
       ) : (
         <div style={{
@@ -150,7 +150,7 @@ export default function Customers() {
           fontSize: '14px',
           zIndex: 1000
         }}>
-          ✓ Terminal selected: <strong>{terminalReader?.label || selectedTerminal}</strong>
+          ✓ ターミナル選択済み: <strong>{terminalReader?.label || selectedTerminal}</strong>
         </div>
       )}
       {/* Spacer for fixed status bar */}
