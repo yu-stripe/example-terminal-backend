@@ -73,9 +73,6 @@ export default function App() {
                   <li>メールアドレスの収集</li>
                   <li>決済履歴の追跡と返金処理</li>
                 </ul>
-                <p style={{ color: 'var(--stripe-orange)', fontWeight: '500' }}>
-                  ⚠️ 注意: これはデモアプリケーションです。本番環境での使用には適切な認証とセキュリティ対策が必要です。
-                </p>
               </div>
             </div>
 
