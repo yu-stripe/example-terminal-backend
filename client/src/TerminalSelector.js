@@ -177,7 +177,7 @@ const TerminalSelector = ({ onTerminalSelected }) => {
           fontSize: '14px',
           zIndex: 1000
         }}>
-          ⚠️ No terminal selected. <Link to="/terminal" style={{ color: 'white', textDecoration: 'underline' }}>Select a terminal</Link> to use terminal features.
+          ⚠️ ターミナルが選択されていません。<Link to="/terminal" style={{ color: 'white', textDecoration: 'underline' }}>ターミナルを選択</Link>してください。
         </div>
       ) : (
         <div style={{
@@ -192,7 +192,7 @@ const TerminalSelector = ({ onTerminalSelected }) => {
           fontSize: '14px',
           zIndex: 1000
         }}>
-          ✓ Terminal selected: <strong>{terminalReader?.label || selectedTerminal}</strong>
+          ✓ ターミナル選択済み: <strong>{terminalReader?.label || selectedTerminal}</strong>
         </div>
       )}
       {/* Spacer for fixed status bar */}
